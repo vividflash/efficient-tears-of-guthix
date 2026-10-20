@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -51,6 +52,7 @@ import net.runelite.api.events.DecorativeObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.eventbus.Subscribe;
@@ -68,8 +70,8 @@ public class StreamAdvisor
 {
     private static final int MAX_REPORTS = 200;
     private static final int MAX_TEAR_CHANGES = 10;
-    /** How long a tear counter change stays on screen. */
-    static final long TEAR_CHANGE_MILLIS = 1800;
+    /** How long a tear counter change stays on screen, on the {@link System#nanoTime} clock. */
+    static final long TEAR_CHANGE_NANOS = TimeUnit.MILLISECONDS.toNanos(1800);
 
     private static final Color BLUE_STREAM = new Color(0, 150, 255);
     private static final Color GREEN_STREAM = Color.GREEN;
@@ -79,13 +81,13 @@ public class StreamAdvisor
     {
         final String text;
         final boolean gain;
-        final long millis;
+        final long nanos;
 
-        TearChange(int change, long millis)
+        TearChange(int change, long nanos)
         {
             this.text = change > 0 ? "+" + change : Integer.toString(change);
             this.gain = change > 0;
-            this.millis = millis;
+            this.nanos = nanos;
         }
     }
 
@@ -120,8 +122,6 @@ public class StreamAdvisor
 
     /** Player in the region, and on the cave's plane, as of the last game tick. */
     private volatile boolean inRegion;
-    private volatile boolean onPlane;
-    private volatile boolean synced;
     /** Stream order as of the last game tick, null while not synced. */
     private volatile String streamOrder;
     /** The same with each letter in its stream's colour. */
@@ -133,6 +133,7 @@ public class StreamAdvisor
     private final AtomicInteger infoRevision = new AtomicInteger();
     private volatile boolean showInfo;
     private volatile boolean splitTimer;
+    private volatile TicksLeftPlace ticksLeftPlace = TicksLeftPlace.INTERFACE;
     /** False from a clear until the first game tick in the region: lastGameTick is stale until then. */
     private volatile boolean ticked;
     private volatile boolean deprioritiseJuna;
@@ -161,6 +162,16 @@ public class StreamAdvisor
     private boolean needsClear;
     /** In the region, no session running and off the cave floor: at Juna. */
     private boolean atEntrance;
+    /** Base of the top level view as of the last game tick in the region. */
+    private int baseX;
+    private int baseY;
+    /** Scene x and y of each wall for the view base below, -1 where not in the scene. */
+    private final int[] wallSceneX = new int[TogLayout.WALLS];
+    private final int[] wallSceneY = new int[TogLayout.WALLS];
+    private int wallSceneBaseX;
+    private int wallSceneBaseY;
+    /** All nine wall scene indices are filled for that base. */
+    private boolean wallScenesKnown;
 
     void start()
     {
@@ -259,6 +270,8 @@ public class StreamAdvisor
             int tick = client.getTickCount();
             lastGameTick = tick;
             ticked = true;
+            baseX = view.getBaseX();
+            baseY = view.getBaseY();
 
             int countdown = client.getVarbitValue(VarbitID.TOG_COUNTDOWN);
             if (countdown != lastCountdown)
@@ -274,7 +287,6 @@ public class StreamAdvisor
 
             inRegion = true;
             needsClear = true;
-            onPlane = true;
             boolean entrance = lastCountdown <= 0 && !TogLayout.isFloor(position.getX(), position.getY());
             if (entrance != atEntrance)
             {
@@ -298,7 +310,7 @@ public class StreamAdvisor
                 tracker.resync(seen, tick);
             }
 
-            synced = tracker.isSynced();
+            // the order is known exactly while synced
             String order = tracker.order();
             if (!Objects.equals(order, streamOrder))
             {
@@ -353,12 +365,36 @@ public class StreamAdvisor
                 return;
             }
 
-            if (!deprioritiseGreen || !onPlane)
+            if (!deprioritiseGreen)
             {
                 return;
             }
 
             if (entry.getIdentifier() != ObjectID.TOG_WEEPINGWALL)
+            {
+                return;
+            }
+
+            // the tracker follows the walls on every tick, synced or not
+            int wall = TogLayout.wallOnTile(baseX + entry.getParam0(), baseY + entry.getParam1());
+            if (wall >= 0 && tracker.colour(wall) == TargetRule.GREEN)
+            {
+                entry.setDeprioritized(true);
+            }
+        }
+        catch (Exception e)
+        {
+            report("onMenuEntryAdded", e);
+        }
+    }
+
+    /** Logs the stream colour of the wall a click on a weeping wall went to, once per click. */
+    @Subscribe
+    public void onMenuOptionClicked(MenuOptionClicked event)
+    {
+        try
+        {
+            if (!inRegion || event.getId() != ObjectID.TOG_WEEPINGWALL || !log.isDebugEnabled())
             {
                 return;
             }
@@ -369,16 +405,16 @@ public class StreamAdvisor
                 return;
             }
 
-            // the tracker follows the walls on every tick, synced or not
-            int wall = TogLayout.wallOnTile(view.getBaseX() + entry.getParam0(), view.getBaseY() + entry.getParam1());
-            if (wall >= 0 && tracker.colour(wall) == TargetRule.GREEN)
+            int wall = TogLayout.wallOnTile(view.getBaseX() + event.getParam0(), view.getBaseY() + event.getParam1());
+            if (log.isDebugEnabled())
             {
-                entry.setDeprioritized(true);
+                log.debug("[deprio] click option {} wall {} colour {} deprioritiseGreen {}",
+                    event.getMenuOption(), wall, wall >= 0 ? tracker.colour(wall) : -1, deprioritiseGreen);
             }
         }
         catch (Exception e)
         {
-            report("onMenuEntryAdded", e);
+            report("onMenuOptionClicked", e);
         }
     }
 
@@ -397,12 +433,6 @@ public class StreamAdvisor
         return inRegion;
     }
 
-    /** The top level view was on the cave's plane on the last game tick. */
-    boolean onPlane()
-    {
-        return onPlane;
-    }
-
     boolean atEntrance()
     {
         return atEntrance;
@@ -410,7 +440,7 @@ public class StreamAdvisor
 
     boolean isSynced()
     {
-        return synced;
+        return streamOrder != null;
     }
 
     /** The rule runs on this order. */
@@ -453,6 +483,7 @@ public class StreamAdvisor
     {
         showInfo = config.showInfo();
         splitTimer = config.splitTimer();
+        ticksLeftPlace = config.ticksLeftPlace();
         deprioritiseJuna = config.deprioritiseJuna();
         deprioritiseGreen = config.deprioritiseGreen();
         allowBlueFirst = config.allowBlueFirst();
@@ -460,7 +491,14 @@ public class StreamAdvisor
         showMarks = config.showPossible() || config.showBad();
         showDryTicks = config.showDryTicks();
         earlyLast = config.reactionSpeed() == ReactionSpeed.ONE_TICK;
+        if (log.isDebugEnabled())
+        {
+            log.debug("[config] info {} splitTimer {} ticksLeft {} tearChange {} marks {} dryTicks {} reaction {}",
+                showInfo, splitTimer, ticksLeftPlace, showTearChange, showMarks, showDryTicks, config.reactionSpeed());
+        }
         infoRevision.incrementAndGet();
+        // the timer overlays follow revision, so a new Ticks left place shows without waiting for a tick
+        revision.incrementAndGet();
     }
 
     boolean showInfo()
@@ -471,6 +509,17 @@ public class StreamAdvisor
     boolean splitTimer()
     {
         return splitTimer;
+    }
+
+    boolean showTearChange()
+    {
+        return showTearChange;
+    }
+
+    /** Where the session ticks left show. */
+    TicksLeftPlace ticksLeftPlace()
+    {
+        return ticksLeftPlace;
     }
 
     /** The tile of this wall as of the last game tick, or null. */
@@ -572,9 +621,10 @@ public class StreamAdvisor
             infoRevision.incrementAndGet();
         }
         inRegion = false;
-        onPlane = false;
         atEntrance = false;
-        synced = false;
+        baseX = 0;
+        baseY = 0;
+        wallScenesKnown = false;
         streamOrder = null;
         orderText = null;
         orderSupported = false;
@@ -584,8 +634,11 @@ public class StreamAdvisor
 
     /**
      * The change of the tear counter to show, 0 for none. A fall to 0 from more
-     * than 1 is the counter being reset for a new session, not a loss. A fall
+     * than 1 is the counter being reset by a death, not a loss. A fall
      * from exactly 1 cannot be told apart from a loss and is shown.
+     * Inside the minigame the counter only goes back to 0 when the player dies
+     * to the poison, and no other way out of a started run keeps that week's
+     * run, so a drop to 0 from more than 1 is treated as that reset, not a loss.
      */
     static int shownChange(int last, int now)
     {
@@ -599,16 +652,27 @@ public class StreamAdvisor
     /** Records a change of the tear counter and drops the ones that have run their time. */
     private void tearChange(int tears)
     {
-        long now = System.currentTimeMillis();
+        long now = System.nanoTime();
         TearChange oldest;
-        while ((oldest = tearChanges.peekFirst()) != null && now - oldest.millis >= TEAR_CHANGE_MILLIS)
+        while ((oldest = tearChanges.peekFirst()) != null && now - oldest.nanos >= TEAR_CHANGE_NANOS)
         {
             tearChanges.pollFirst();
         }
 
         int change = shownChange(lastTears, tears);
+        if (change == 0 && tears == 0 && lastTears > 1)
+        {
+            if (log.isDebugEnabled())
+            {
+                log.debug("[tear] suppressed reset last {} now {}", lastTears, tears);
+            }
+        }
         if (change != 0)
         {
+            if (log.isDebugEnabled())
+            {
+                log.debug("[tear] shown {} (last {} now {})", change, lastTears, tears);
+            }
             tearChanges.addLast(new TearChange(change, now));
             while (tearChanges.size() > MAX_TEAR_CHANGES)
             {
@@ -689,7 +753,8 @@ public class StreamAdvisor
 
     /**
      * Reads the nine wall tiles into {@code seen} and keeps the tiles for the
-     * overlay. False when any of them is not in the scene.
+     * overlay. False when any of them is not in the scene. The view base is
+     * the one stored by this tick.
      */
     private boolean readWalls(WorldView view)
     {
@@ -701,13 +766,28 @@ public class StreamAdvisor
             return false;
         }
 
+        if (!wallScenesKnown || wallSceneBaseX != baseX || wallSceneBaseY != baseY)
+        {
+            // the walls do not move: their scene indices change only with the view base
+            wallSceneBaseX = baseX;
+            wallSceneBaseY = baseY;
+            boolean all = true;
+            for (int wall = 0; wall < TogLayout.WALLS; wall++)
+            {
+                LocalPoint local = LocalPoint.fromWorld(view, TogLayout.wallX(wall), TogLayout.wallY(wall));
+                wallSceneX[wall] = local == null ? -1 : local.getSceneX();
+                wallSceneY[wall] = local == null ? -1 : local.getSceneY();
+                all &= local != null;
+            }
+            wallScenesKnown = all;
+        }
+
         Tile[][] plane = tiles[TogLayout.PLANE];
         boolean complete = true;
         for (int wall = 0; wall < TogLayout.WALLS; wall++)
         {
-            LocalPoint local = LocalPoint.fromWorld(view, TogLayout.wallX(wall), TogLayout.wallY(wall));
-            int x = local == null ? -1 : local.getSceneX();
-            int y = local == null ? -1 : local.getSceneY();
+            int x = wallSceneX[wall];
+            int y = wallSceneY[wall];
             if (x < 0 || x >= plane.length || plane[x] == null || y < 0 || y >= plane[x].length)
             {
                 complete = false;
@@ -722,12 +802,17 @@ public class StreamAdvisor
         return complete;
     }
 
-    /** Applies the rule while the streams are synced in the expected order; otherwise there is no target. */
+    /**
+     * Applies the rule while the streams are synced in the expected order and
+     * the session has not ended; otherwise there is no target.
+     */
     private void decide(int tick, WorldPoint position)
     {
         TargetRule.Decision decision = null;
         String order = streamOrder;
-        if (orderSupported)
+        // the countdown ran out: no target until the next session or leaving the cave
+        boolean over = counting && ticksLeft == 0;
+        if (orderSupported && !over)
         {
             int period = tracker.period();
             for (int wall = 0; wall < TogLayout.WALLS; wall++)
@@ -757,9 +842,7 @@ public class StreamAdvisor
             ? TargetRule.waitTicks(standing, colours, untilMove)
             : 0;
         shouldMove = decision != null && decision.target >= 0 && decision.target != standing;
-        entryWait = decision != null && lastCountdown <= 0 && !TogLayout.isFloor(position.getX(), position.getY())
-            ? entryWait(tick)
-            : -1;
+        entryWait = decision != null && atEntrance ? entryWait(tick) : -1;
 
         target = decision == null ? -1 : decision.target;
         second = decision == null ? -1 : decision.second;

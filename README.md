@@ -48,5 +48,7 @@ Works on `GGGBBB` and `BBBGGG` worlds.
   otherwise only when Juna comes into view. Default `off`.
 - **Tear change**: tears gained or lost, beside the tear counter. Default
   `on`.
-- **Login reminder**: chat message on login once the next run is open,
-  counted from the last run the plugin saw. Default `off`.
+- **Ticks left**: `Overlay` (info panel or timer box), `Interface` (above
+  the time bar) or `Both`. Default `Interface`.
+- **Login reminder**: chat message on login with the XP skill while a run is
+  open. Default `off`.

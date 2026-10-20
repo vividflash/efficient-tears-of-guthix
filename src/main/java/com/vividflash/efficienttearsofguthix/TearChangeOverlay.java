@@ -49,7 +49,6 @@ class TearChangeOverlay extends Overlay
     private static final int GAP = 8;
 
     private final Client client;
-    private final EfficientTearsOfGuthixConfig config;
     private final StreamAdvisor advisor;
 
     /** The advisor revision the field below was read at. */
@@ -58,10 +57,9 @@ class TearChangeOverlay extends Overlay
     private Rectangle counter;
 
     @Inject
-    TearChangeOverlay(Client client, EfficientTearsOfGuthixConfig config, StreamAdvisor advisor)
+    TearChangeOverlay(Client client, StreamAdvisor advisor)
     {
         this.client = client;
-        this.config = config;
         this.advisor = advisor;
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -81,7 +79,7 @@ class TearChangeOverlay extends Overlay
             if (revision != builtRevision)
             {
                 builtRevision = revision;
-                Widget widget = config.showTearChange() ? client.getWidget(InterfaceID.TogSidepanel.COUNT) : null;
+                Widget widget = advisor.showTearChange() ? client.getWidget(InterfaceID.TogSidepanel.COUNT) : null;
                 counter = widget == null || widget.isHidden() ? null : widget.getBounds();
             }
 
@@ -91,17 +89,17 @@ class TearChangeOverlay extends Overlay
                 return null;
             }
 
-            long now = System.currentTimeMillis();
+            long now = System.nanoTime();
             int x = bounds.x + bounds.width + GAP;
             for (StreamAdvisor.TearChange change : advisor.tearChanges())
             {
-                long age = now - change.millis;
-                if (age < 0 || age >= StreamAdvisor.TEAR_CHANGE_MILLIS)
+                long age = now - change.nanos;
+                if (age < 0 || age >= StreamAdvisor.TEAR_CHANGE_NANOS)
                 {
                     continue;
                 }
 
-                int y = bounds.y + bounds.height - (int) (RISE * age / StreamAdvisor.TEAR_CHANGE_MILLIS);
+                int y = bounds.y + bounds.height - (int) (RISE * age / StreamAdvisor.TEAR_CHANGE_NANOS);
                 OverlayUtil.renderTextLocation(graphics, new Point(x, y), change.text,
                     change.gain ? Color.GREEN : Color.RED);
             }

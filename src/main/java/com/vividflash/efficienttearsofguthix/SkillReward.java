@@ -24,11 +24,14 @@
  */
 package com.vividflash.efficienttearsofguthix;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -44,13 +47,14 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 
 /**
- * The skill the tears' XP goes to if played now, the date of the last run
- * this plugin saw, and the login reminder once the next run is open.
+ * The skill the tears' XP goes to if played now, and the login reminder from
+ * the game's line that the next run is open until the run is done, the day
+ * ends or the plugin stops.
  */
+@Slf4j
 @Singleton
 public class SkillReward
 {
@@ -73,19 +77,14 @@ public class SkillReward
     private static final int DRUIDIC_RITUAL_DONE = 4;
     private static final int PANDEMONIUM_DONE = 50;
 
-    /** The run opens at 00:00 UTC on this many days after the day of the last run. */
-    static final int DAYS_BETWEEN_RUNS = 7;
-
-    private static final String CONFIG_GROUP = "efficienttearsofguthix";
-    /** Epoch millis of the last run's end, on the RuneScape profile. */
-    private static final String LAST_RUN_KEY = "lastRun";
+    /** The game's line on the first login of the day while the next run is open. */
+    static final String ELIGIBLE_MESSAGE = "You are eligible to drink from the Tears of Guthix.";
     /** The game's line at the end of a run. */
     private static final String RUN_END_MESSAGE = "Tears collected: ";
-    @Inject
-    private Client client;
+
 
     @Inject
-    private ConfigManager configManager;
+    private Client client;
 
     @Inject
     private ChatMessageManager chatMessageManager;
@@ -99,14 +98,34 @@ public class SkillReward
     private volatile Skill skill;
     /** The login screen was seen, so the next login is not a world hop. */
     private volatile boolean fromLoginScreen;
-    /** Logged in from the login screen, the reminder is still to be checked. */
+    /** Logged in from the login screen, the open flag is still to be checked. */
     private volatile boolean loginPending;
+    /** The game said the next run is open: remind on the next tick with stats loaded. */
+    private volatile boolean eligibleSeen;
+    /** Reminded since the last login, so the game's line after a flag reminder adds nothing. */
+    private volatile boolean reminded;
     /** Juna came into the scene: pick the skill on the next tick with stats loaded. */
     private volatile boolean junaPending;
+    /** What set {@link #junaPending}, for the debug log: juna, stat or config. */
+    private volatile String junaTrigger = "config";
+    /** A world hop is under way, so the next login is not from the login screen. */
+    private volatile boolean hopping;
+    /** A login or world hop whose reminder check is still to be logged. */
+    private volatile boolean checkPending;
+    /** The pending check is for a login from the login screen, not a world hop. */
+    private volatile boolean checkFromLogin;
     /** The XP skill setting, cached for the spawn handler. */
     private volatile boolean showSkill;
     /** The XP skill and its refresh setting both on, cached for the stat handler. */
     private volatile boolean refreshSkill;
+    /** Per skill the XP of its last stat change, -1 before the first one since the login screen. */
+    private final int[] lastXp = new int[Skill.values().length];
+    /**
+     * Per account hash, the UTC day the game's eligible line was seen. No game state says whether
+     * this week's run is still open, so the flag lives from the day's first eligible line until the
+     * run ends, the game day ends at 00:00 UTC or the plugin shuts down; on start no run is open.
+     */
+    private final Map<Long, LocalDate> runOpen = new ConcurrentHashMap<>();
 
     void start()
     {
@@ -114,8 +133,18 @@ public class SkillReward
         // enabled on the login screen: the next login is not a world hop
         fromLoginScreen = client.getGameState() == GameState.LOGIN_SCREEN;
         loginPending = false;
+        eligibleSeen = false;
+        reminded = false;
+        Arrays.fill(lastXp, -1);
+        runOpen.clear();
         readConfig();
         junaPending = showSkill;
+        junaTrigger = "config";
+    }
+
+    void stop()
+    {
+        runOpen.clear();
     }
 
     /** A setting changed: pick again, so turning the XP skill on at Juna shows it. */
@@ -123,6 +152,7 @@ public class SkillReward
     {
         readConfig();
         junaPending = showSkill;
+        junaTrigger = "config";
     }
 
     private void readConfig()
@@ -141,6 +171,12 @@ public class SkillReward
         return skill;
     }
 
+    /** The XP skill setting, as of the last config read. */
+    boolean showSkill()
+    {
+        return showSkill;
+    }
+
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
@@ -149,15 +185,28 @@ public class SkillReward
             GameState state = event.getGameState();
             if (state == GameState.LOGGED_IN)
             {
-                loginPending = fromLoginScreen && config.loginReminder();
+                loginPending = fromLoginScreen;
+                // the check only feeds a debug line
+                checkPending = log.isDebugEnabled() && (fromLoginScreen || hopping);
+                checkFromLogin = fromLoginScreen;
+                hopping = false;
                 fromLoginScreen = false;
+            }
+            else if (state == GameState.HOPPING)
+            {
+                hopping = true;
             }
             else if (state == GameState.LOGIN_SCREEN)
             {
+                hopping = false;
+                checkPending = false;
                 skill = null;
                 fromLoginScreen = true;
                 loginPending = false;
+                eligibleSeen = false;
+                reminded = false;
                 junaPending = false;
+                Arrays.fill(lastXp, -1);
             }
         }
         catch (Exception e)
@@ -171,6 +220,7 @@ public class SkillReward
     {
         if (showSkill && event.getGameObject().getId() == ObjectID.TOG_JUNA)
         {
+            junaTrigger = "juna";
             junaPending = true;
         }
     }
@@ -179,8 +229,12 @@ public class SkillReward
     @Subscribe
     public void onStatChanged(StatChanged event)
     {
-        if (refreshSkill && advisor.inArea())
+        int index = event.getSkill().ordinal();
+        boolean gained = event.getXp() != lastXp[index];
+        lastXp[index] = event.getXp();
+        if (gained && refreshSkill && advisor.inArea())
         {
+            junaTrigger = "stat";
             junaPending = true;
         }
     }
@@ -190,9 +244,20 @@ public class SkillReward
     {
         try
         {
-            if (event.getType() == ChatMessageType.GAMEMESSAGE && event.getMessage().contains(RUN_END_MESSAGE))
+            if (event.getType() != ChatMessageType.GAMEMESSAGE)
             {
-                configManager.setRSProfileConfiguration(CONFIG_GROUP, LAST_RUN_KEY, System.currentTimeMillis());
+                return;
+            }
+            if (event.getMessage().contains(ELIGIBLE_MESSAGE))
+            {
+                eligibleSeen = true;
+                runOpen.put(client.getAccountHash(), LocalDate.now(ZoneOffset.UTC));
+                log.debug("[reminder] game eligible line seen");
+            }
+            else if (event.getMessage().contains(RUN_END_MESSAGE))
+            {
+                runOpen.remove(client.getAccountHash());
+                log.debug("[reminder] run done, open flag cleared");
             }
         }
         catch (Exception e)
@@ -206,18 +271,36 @@ public class SkillReward
     {
         try
         {
+            if (checkPending && client.getOverallExperience() > 0)
+            {
+                checkPending = false;
+                if (log.isDebugEnabled())
+                {
+                    log.debug("[reminder] login check login {} runOpen {} eligibleSeen {} reminded {} setting {}",
+                        checkFromLogin, runOpen(), eligibleSeen, reminded, config.loginReminder());
+                }
+            }
+
             // outside the cave a pending Juna pick waits for the first tick inside
             boolean juna = junaPending && advisor.inArea();
-            if ((!juna && !loginPending) || client.getOverallExperience() <= 0)
+            if ((!juna && !loginPending && !eligibleSeen) || client.getOverallExperience() <= 0)
             {
                 return;
             }
 
-            // on login the skills are only checked when the reminder is due
-            boolean remind = loginPending && config.loginReminder() && ready();
-            if ((juna && config.showSkill()) || remind)
+            boolean remind = reminderDue();
+            boolean junaPick = juna && showSkill;
+            if (junaPick || remind)
             {
-                Skill picked = pick(client.getSkillExperiences(), eligible());
+                int[] experience = client.getSkillExperiences();
+                boolean[] open = eligible();
+                Skill picked = pick(experience, open);
+                if (log.isDebugEnabled())
+                {
+                    log.debug("[xp] pick {} -> {} trigger {} xp {} eligible {}", skill, picked,
+                        junaPick ? junaTrigger : eligibleSeen ? "eligible" : "login",
+                        picked == null ? -1 : experience[picked.ordinal()], Arrays.toString(open));
+                }
                 if (picked != skill)
                 {
                     skill = picked;
@@ -228,16 +311,39 @@ public class SkillReward
             {
                 junaPending = false;
             }
+            // below the game's own line the reminder only adds the skill
+            boolean gameLine = eligibleSeen;
             loginPending = false;
+            eligibleSeen = false;
             if (remind)
             {
-                remind(skill);
+                postReminder(skill, gameLine);
             }
         }
         catch (Exception e)
         {
             advisor.report("skillTick", e);
         }
+    }
+
+    /** True when the reminder is due. */
+    private boolean reminderDue()
+    {
+        // the open flag covers every login after the game's first one of the day
+        return !reminded && config.loginReminder() && (eligibleSeen || (loginPending && runOpen()));
+    }
+
+    /** Posts the reminder for this skill; below the game's own line it only adds the skill. */
+    private void postReminder(Skill picked, boolean gameLine)
+    {
+        reminded = true;
+        if (log.isDebugEnabled())
+        {
+            log.debug("[reminder] posted, skill {}, game line {}", picked, gameLine);
+        }
+        remind(gameLine
+            ? "The ToG XP goes to " + picked.getName() + "."
+            : "Tears of Guthix is ready. The XP goes to " + picked.getName() + ".");
     }
 
     /** Per entry of {@link #ORDER}, whether the game counts that skill. */
@@ -288,29 +394,18 @@ public class SkillReward
         return best;
     }
 
-    /**
-     * A run was recorded and the next one is open. False with no run recorded.
-     * Not checking for the quest point or 100,000 XP requirement because it is unnecessary.
-     */
-    private boolean ready()
+    /** The game's eligible line was seen today on this account and no run has ended since. */
+    private boolean runOpen()
     {
-        Long lastRun = configManager.getRSProfileConfiguration(CONFIG_GROUP, LAST_RUN_KEY, Long.class);
-        return lastRun != null && ready(lastRun, System.currentTimeMillis());
+        return LocalDate.now(ZoneOffset.UTC).equals(runOpen.get(client.getAccountHash()));
     }
 
-    static boolean ready(long lastRun, long now)
-    {
-        LocalDate opens = Instant.ofEpochMilli(lastRun).atZone(ZoneOffset.UTC).toLocalDate()
-            .plusDays(DAYS_BETWEEN_RUNS);
-        return now >= opens.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-    }
-
-    private void remind(Skill skill)
+    private void remind(String message)
     {
         chatMessageManager.queue(QueuedMessage.builder()
             .type(ChatMessageType.CONSOLE)
             .runeLiteFormattedMessage(new ChatMessageBuilder()
-                .append("Tears of Guthix is ready. The XP goes to " + skill.getName() + ".")
+                .append(message)
                 .build())
             .build());
     }

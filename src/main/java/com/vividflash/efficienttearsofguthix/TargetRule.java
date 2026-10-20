@@ -59,6 +59,7 @@ final class TargetRule
 
     /** Session end ticks after the last blue stream's move, mod the period, at which the endgame applies. */
     private static final int[] ENDGAME_OFFSETS = {15, 0};
+    /** A stream always lasts 16 ticks in game, so the endgame uses this fixed period, not the learned one. */
     private static final int PERIOD = StreamTracker.DEFAULT_PERIOD;
 
     /** A blue stream this close to moving counts as part of the current burst. */
@@ -132,18 +133,20 @@ final class TargetRule
     {
         boolean endgame = sessionLeft > 0 && sessionLeft <= ENDGAME
             && endsAsBurstStarts(colour, ticksUntilMove, sessionLeft);
-        int startX = TogLayout.startX(playerX, playerY);
-        int startY = TogLayout.startY(playerX, playerY);
+        boolean floor = TogLayout.isFloor(playerX, playerY);
+        int startX = floor ? playerX : TogLayout.ENTRY_X;
+        int startY = floor ? playerY : TogLayout.ENTRY_Y;
+        // the start and every collect tile are on the cross
+        int[] fromStart = TogLayout.floorDistances(startX, startY);
         int playerWall = TogLayout.wallAtCollectTile(playerX, playerY);
         for (int wall = 0; wall < WALLS; wall++)
         {
-            distance[wall] = TogLayout.costToWall(startX, startY, wall);
+            distance[wall] = fromStart[TogLayout.collectCell(wall)];
             int present = endgame ? Math.min(ticksUntilMove[wall], sessionLeft) : ticksUntilMove[wall];
             collect[wall] = present - STOP_DELAY - distance[wall] - START_DELAY;
-            int needed = endgame
+            reachable[wall] = colour[wall] == BLUE && collect[wall] >= (endgame
                 ? 1
-                : MIN_COLLECT[Math.min(MIN_COLLECT.length - 1, blueRank(wall, colour, ticksUntilMove))];
-            reachable[wall] = colour[wall] == BLUE && collect[wall] >= needed;
+                : MIN_COLLECT[Math.min(MIN_COLLECT.length - 1, blueRank(wall, colour, ticksUntilMove))]);
         }
         int[] prefer = endgame ? collect : null;
 
@@ -463,7 +466,7 @@ final class TargetRule
         int ticks = 0;
         for (int wall = 0; wall < WALLS; wall++)
         {
-            if (wall != playerWall && colour[wall] == BLUE && ticksUntilMove[wall] <= BURST_WINDOW)
+            if (pendingBlue(wall, playerWall, colour, ticksUntilMove))
             {
                 ticks = Math.max(ticks, ticksUntilMove[wall]);
             }
@@ -475,12 +478,18 @@ final class TargetRule
     {
         for (int wall = 0; wall < WALLS; wall++)
         {
-            if (wall != playerWall && colour[wall] == BLUE && ticksUntilMove[wall] <= BURST_WINDOW)
+            if (pendingBlue(wall, playerWall, colour, ticksUntilMove))
             {
                 return true;
             }
         }
         return false;
+    }
+
+    /** A blue stream on another wall than the one stood at moves within {@link #BURST_WINDOW} ticks. */
+    private static boolean pendingBlue(int wall, int playerWall, int[] colour, int[] ticksUntilMove)
+    {
+        return wall != playerWall && colour[wall] == BLUE && ticksUntilMove[wall] <= BURST_WINDOW;
     }
 
     /**

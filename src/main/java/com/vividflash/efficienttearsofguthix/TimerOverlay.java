@@ -56,16 +56,13 @@ class TimerOverlay extends OverlayPanel
     {
         try
         {
-            if (!advisor.inArea() || !advisor.onPlane())
+            if (!advisor.inArea())
             {
                 return null;
             }
 
             if (!advisor.splitTimer() || !advisor.showInfo())
             {
-                // Forget the build so turning the split back on rebuilds at once.
-                timerRevision = -1;
-                timerShown = false;
                 return null;
             }
 
@@ -73,7 +70,7 @@ class TimerOverlay extends OverlayPanel
             if (revision != timerRevision)
             {
                 timerRevision = revision;
-                timerShown = InfoOverlay.updateTimer(advisor, timer);
+                timerShown = TimerLine.update(advisor, timer);
             }
             return timerShown ? super.render(graphics) : null;
         }

@@ -48,12 +48,12 @@ import net.runelite.client.ui.overlay.OverlayManager;
 )
 public class EfficientTearsOfGuthixPlugin extends Plugin
 {
-    private static final String CONFIG_GROUP = "efficienttearsofguthix";
+    private static final String CONFIG_GROUP = EfficientTearsOfGuthixConfig.GROUP;
     private static final String LAST_SEEN_VERSION_KEY = "lastSeenVersion";
 
     /** The release the one-time notice below belongs to, not the packaged version. */
-    static final String VERSION = "0.3";
-    private static final String UPDATE_MESSAGE = "Patch 0.3; Multiple Performance Improvements, Added Toggles, a Countdown and Settings for Reaction Speed";
+    static final String VERSION = "0.4";
+    private static final String UPDATE_MESSAGE = "Efficient ToG " + VERSION + ": Remaining Tick Timer can now be shown in the Interface, Improved Reminder and stops the Highlights when you are done";
 
     /** Dark red for the one-time notice, legible on either chatbox background. */
     private static final Color UPDATE_MESSAGE_COLOR = new Color(0x8B0000);
@@ -88,6 +88,9 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     @Inject
     private TearChangeOverlay tearChangeOverlay;
 
+    @Inject
+    private BarTicksOverlay barTicksOverlay;
+
     /** The stored version already equals {@link #VERSION}, so logins skip the config read. */
     private boolean noticeHandled;
 
@@ -99,10 +102,12 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         eventBus.register(streamAdvisor);
         skillReward.start();
         eventBus.register(skillReward);
+        targetOverlay.configChanged();
         overlayManager.add(targetOverlay);
         overlayManager.add(infoOverlay);
         overlayManager.add(timerOverlay);
         overlayManager.add(tearChangeOverlay);
+        overlayManager.add(barTicksOverlay);
     }
 
     @Override
@@ -112,7 +117,9 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         overlayManager.remove(infoOverlay);
         overlayManager.remove(timerOverlay);
         overlayManager.remove(tearChangeOverlay);
+        overlayManager.remove(barTicksOverlay);
         eventBus.unregister(skillReward);
+        skillReward.stop();
         eventBus.unregister(streamAdvisor);
         streamAdvisor.stop();
     }
@@ -148,10 +155,13 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     @Subscribe
     public void onConfigChanged(ConfigChanged event)
     {
-        if (CONFIG_GROUP.equals(event.getGroup()))
+        // the notice's stored version is no setting: nothing to read again
+        if (CONFIG_GROUP.equals(event.getGroup()) && !LAST_SEEN_VERSION_KEY.equals(event.getKey()))
         {
-            streamAdvisor.configChanged();
+            // before the advisor: its revision bump rebuilds overlays that read these caches
             skillReward.configChanged();
+            targetOverlay.configChanged();
+            streamAdvisor.configChanged();
         }
     }
 

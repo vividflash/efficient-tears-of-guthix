@@ -42,12 +42,14 @@ final class TogLayout
 
     private static final int BASE_X = 3256;
     private static final int BASE_Y = 9515;
-    private static final int ENTRY_X = 3257;
-    private static final int ENTRY_Y = 9517;
+    /** The tile where the walk in from the entrance ends. */
+    static final int ENTRY_X = 3257;
+    static final int ENTRY_Y = 9517;
     private static final int SIZE = 5;
     private static final int UNREACHABLE = 99;
 
     private static final int[][] FLOOR_DISTANCE = buildFloorDistances();
+    private static final int[] COLLECT_CELL = buildCollectCells();
 
     private TogLayout()
     {
@@ -85,37 +87,19 @@ final class TogLayout
         return (dx >= 1 && dx <= 3) || (dy >= 1 && dy <= 3);
     }
 
-    /** Walking ticks between two tiles; Chebyshev distance when either one is off the cross. */
-    static int distance(int fromX, int fromY, int toX, int toY)
+    /**
+     * Walking ticks from this tile on the cross to each cell of the 5x5 block;
+     * {@link #collectCell} gives a wall's index into it. Read only.
+     */
+    static int[] floorDistances(int x, int y)
     {
-        if (isFloor(fromX, fromY) && isFloor(toX, toY))
-        {
-            return FLOOR_DISTANCE[cell(fromX, fromY)][cell(toX, toY)];
-        }
-        return Math.max(Math.abs(fromX - toX), Math.abs(fromY - toY));
+        return FLOOR_DISTANCE[cell(x, y)];
     }
 
-    /** The tile itself when on the cross, else the tile where the walk in from the entrance ends. */
-    static int[] startTile(int x, int y)
+    /** The cell of this wall's collect tile, for {@link #floorDistances}. */
+    static int collectCell(int wall)
     {
-        return isFloor(x, y) ? new int[]{x, y} : new int[]{ENTRY_X, ENTRY_Y};
-    }
-
-    /** X of {@link #startTile}, without the array. */
-    static int startX(int x, int y)
-    {
-        return isFloor(x, y) ? x : ENTRY_X;
-    }
-
-    /** Y of {@link #startTile}, without the array. */
-    static int startY(int x, int y)
-    {
-        return isFloor(x, y) ? y : ENTRY_Y;
-    }
-
-    static int costToWall(int x, int y, int wall)
-    {
-        return distance(x, y, COLLECT_X[wall], COLLECT_Y[wall]);
+        return COLLECT_CELL[wall];
     }
 
     /** Wall served by this collect tile, or -1. */
@@ -147,6 +131,16 @@ final class TogLayout
     private static int cell(int x, int y)
     {
         return (x - BASE_X) + SIZE * (y - BASE_Y);
+    }
+
+    private static int[] buildCollectCells()
+    {
+        int[] cells = new int[WALLS];
+        for (int wall = 0; wall < WALLS; wall++)
+        {
+            cells[wall] = cell(COLLECT_X[wall], COLLECT_Y[wall]);
+        }
+        return cells;
     }
 
     private static int[][] buildFloorDistances()

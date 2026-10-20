@@ -83,16 +83,16 @@ class TargetOverlay extends Overlay
         final WallStyle style;
         final Color colour;
         final boolean dim;
-        /** The object whose hull is drawn when there is no model to outline, found at rebuild. */
-        final TileObject hullOwner;
-        /** The rebuild searched the tile for a hull owner, so a null hullOwner means there is none. */
-        final boolean searched;
+        /**
+         * The object whose hull is drawn when there is no model or stream hull to draw, found by
+         * the first frame that needs one and replaced when a later search finds another.
+         */
+        TileObject hullOwner;
+        /** A frame searched the tile for a hull owner, so a null hullOwner means there is none. */
+        boolean searched;
 
-        Mark(int wall, boolean model, boolean tile, Color colour, boolean dim, WallStyle style, boolean searched,
-            TileObject hullOwner)
+        Mark(int wall, boolean model, boolean tile, Color colour, boolean dim, WallStyle style)
         {
-            this.hullOwner = hullOwner;
-            this.searched = searched;
             this.wall = wall;
             this.tile = tile;
             this.model = model;
@@ -112,10 +112,28 @@ class TargetOverlay extends Overlay
     private final List<Mark> marks = new ArrayList<>();
     private final LocalPoint[] wallPoints = new LocalPoint[TogLayout.WALLS];
     private final LocalPoint[] collectPoints = new LocalPoint[TogLayout.WALLS];
+    /** The view and view base the points above were worked out for. */
+    private WorldView pointsView;
+    private int pointsBaseX;
+    private int pointsBaseY;
     /** Wall to draw the stream countdown on, or -1. */
     private int ticksWall = -1;
     private String ticksText;
     private Color ticksColour;
+
+    /** The settings, read again on a config change; the advisor's revision bump that follows rebuilds with them. */
+    private volatile boolean highlightWall;
+    private volatile WallStyle wallStyle;
+    private volatile boolean highlightTile;
+    private volatile boolean showPossible;
+    private volatile boolean showBad;
+    private volatile boolean showStreamTicks;
+    private volatile boolean showDryTicks;
+    private volatile boolean showSecond;
+    private volatile Color bestColor;
+    private volatile Color secondColor;
+    private volatile Color possibleColor;
+    private volatile Color badColor;
 
     @Inject
     TargetOverlay(Client client, EfficientTearsOfGuthixConfig config, StreamAdvisor advisor, ModelOutlineRenderer outlineRenderer)
@@ -128,12 +146,29 @@ class TargetOverlay extends Overlay
         setLayer(OverlayLayer.ABOVE_SCENE);
     }
 
+    /** Reads the settings again; called on start and on a change of this plugin's config, before the advisor's. */
+    void configChanged()
+    {
+        highlightWall = config.highlightWall();
+        wallStyle = config.wallStyle();
+        highlightTile = config.highlightTile();
+        showPossible = config.showPossible();
+        showBad = config.showBad();
+        showStreamTicks = config.showStreamTicks();
+        showDryTicks = config.showDryTicks();
+        showSecond = config.showSecond();
+        bestColor = config.bestColor();
+        secondColor = config.secondColor();
+        possibleColor = config.possibleMarkColor();
+        badColor = config.badMarkColor();
+    }
+
     @Override
     public Dimension render(Graphics2D graphics)
     {
         try
         {
-            if (!advisor.inArea() || !advisor.onPlane() || !advisor.orderSupported())
+            if (!advisor.inArea() || !advisor.orderSupported())
             {
                 return null;
             }
@@ -175,38 +210,42 @@ class TargetOverlay extends Overlay
     {
         marks.clear();
         ticksWall = -1;
-        Arrays.fill(wallPoints, null);
-        Arrays.fill(collectPoints, null);
-        boolean model = config.highlightWall();
-        boolean tile = config.highlightTile();
-        boolean possible = config.showPossible();
-        boolean bad = config.showBad();
-        boolean ticksOn = config.showStreamTicks();
-        if (!model && !tile && !ticksOn && !config.showDryTicks() && !possible && !bad)
+        boolean model = highlightWall;
+        boolean tile = highlightTile;
+        boolean possible = showPossible;
+        boolean bad = showBad;
+        boolean ticksOn = showStreamTicks;
+        boolean dryOn = showDryTicks;
+        if (!model && !tile && !ticksOn && !dryOn && !possible && !bad)
         {
             return;
         }
 
         WorldView view = client.getTopLevelWorldView();
-        WallStyle style = config.wallStyle();
-        if (view == null || style == null)
+        if (view == null)
         {
             return;
         }
 
-        for (int wall = 0; wall < TogLayout.WALLS; wall++)
+        WallStyle style = null;
+        if (model)
         {
-            wallPoints[wall] = LocalPoint.fromWorld(view, TogLayout.wallX(wall), TogLayout.wallY(wall));
-            collectPoints[wall] = LocalPoint.fromWorld(view, TogLayout.collectX(wall), TogLayout.collectY(wall));
+            style = wallStyle;
+            model = style != null;
         }
+
+        // the tile marks and the bad marks are drawn on the collect tiles
+        updatePoints(view, tile || bad);
 
         int wall = advisor.targetWall();
         boolean move = advisor.shouldMove();
-        boolean showSecond = config.showSecond();
+        boolean showSecond = (model || tile || bad) && this.showSecond;
         int second = showSecond ? advisor.secondWall() : -1;
         if (bad || (possible && (model || tile)))
         {
             int[] wallMarks = advisor.wallMarks();
+            Color badColour = bad ? badColor : null;
+            Color possibleColour = possible ? possibleColor : null;
             for (int other = 0; other < TogLayout.WALLS; other++)
             {
                 if (other == wall || (move && other == second && showSecond))
@@ -215,11 +254,11 @@ class TargetOverlay extends Overlay
                 }
                 if (bad && wallMarks[other] == TargetRule.MARK_BAD)
                 {
-                    add(other, false, true, style, config.badMarkColor(), true);
+                    add(other, false, true, style, badColour, true);
                 }
                 else if (possible && wallMarks[other] == TargetRule.MARK_POSSIBLE)
                 {
-                    add(other, model, tile, style, config.possibleMarkColor(), true);
+                    add(other, model, tile, style, possibleColour, true);
                 }
             }
         }
@@ -229,15 +268,14 @@ class TargetOverlay extends Overlay
         {
             if (move && second >= 0 && showSecond)
             {
-                add(second, model, tile, style, config.secondColor(), false);
+                add(second, model, tile, style, secondColor, false);
             }
             if (wall >= 0)
             {
-                add(wall, model, tile, style, config.bestColor(), false);
+                add(wall, model, tile, style, bestColor, false);
             }
         }
 
-        boolean dryOn = config.showDryTicks();
         if (!ticksOn && !dryOn)
         {
             return;
@@ -251,7 +289,7 @@ class TargetOverlay extends Overlay
             ticksText = Integer.toString(ticks);
             ticksColour = ticks <= TICKS_ENDING ? TICKS_ENDING_COLOR : TICKS_COLOR;
         }
-        else if (own >= 0 && advisor.dryTicks() > 0)
+        else if (dryOn && own >= 0 && advisor.dryTicks() > 0)
         {
             ticksWall = own;
             ticksText = Integer.toString(advisor.dryTicks());
@@ -259,16 +297,42 @@ class TargetOverlay extends Overlay
         }
     }
 
+    /**
+     * The walls do not move, so their points are worked out again only when the
+     * view or its base changed, or for one that was not in the scene.
+     */
+    private void updatePoints(WorldView view, boolean collect)
+    {
+        int baseX = view.getBaseX();
+        int baseY = view.getBaseY();
+        if (view != pointsView || baseX != pointsBaseX || baseY != pointsBaseY)
+        {
+            Arrays.fill(wallPoints, null);
+            Arrays.fill(collectPoints, null);
+            pointsView = view;
+            pointsBaseX = baseX;
+            pointsBaseY = baseY;
+        }
+
+        for (int wall = 0; wall < TogLayout.WALLS; wall++)
+        {
+            if (wallPoints[wall] == null)
+            {
+                wallPoints[wall] = LocalPoint.fromWorld(view, TogLayout.wallX(wall), TogLayout.wallY(wall));
+            }
+            if (collect && collectPoints[wall] == null)
+            {
+                collectPoints[wall] = LocalPoint.fromWorld(view, TogLayout.collectX(wall), TogLayout.collectY(wall));
+            }
+        }
+    }
+
     private void add(int wall, boolean model, boolean tile, WallStyle style, Color colour, boolean dim)
     {
         if (colour != null && (model || tile))
         {
-            Tile wallTile = model ? advisor.wallTile(wall) : null;
             WallStyle drawn = model && hasModel(wall) ? style : null;
-            // a stream drawn as a hull falls back to the tile's hull owner when its own hull is null
-            boolean search = model && (drawn == null || drawn == WallStyle.HULL);
-            TileObject hullOwner = search ? hullOwner(wallTile) : null;
-            marks.add(new Mark(wall, model, tile, colour, dim, drawn, search, hullOwner));
+            marks.add(new Mark(wall, model, tile, colour, dim, drawn));
         }
     }
 
@@ -287,9 +351,14 @@ class TargetOverlay extends Overlay
         return area;
     }
 
-    /** The first object on the tile that has a convex hull right now: a game object, else the wall object. */
-    private static TileObject hullOwner(Tile tile)
+    /**
+     * The hull of the first object on the tile that has a convex hull right now: a game object, else
+     * the wall object. A found object becomes the mark's hull owner; null when there is none.
+     */
+    private static Shape searchHull(Tile tile, Mark mark)
     {
+        // an owner whose hull is gone is dropped, so a search that finds nothing is not repeated
+        mark.hullOwner = null;
         if (tile == null)
         {
             return null;
@@ -297,16 +366,23 @@ class TargetOverlay extends Overlay
 
         for (GameObject object : tile.getGameObjects())
         {
-            if (object != null && object.getConvexHull() != null)
+            Shape hull = object == null ? null : object.getConvexHull();
+            if (hull != null)
             {
-                return object;
+                mark.hullOwner = object;
+                return hull;
             }
         }
         WallObject wallObject = tile.getWallObject();
-        return wallObject != null && wallObject.getConvexHull() != null ? wallObject : null;
+        Shape hull = wallObject == null ? null : wallObject.getConvexHull();
+        if (hull != null)
+        {
+            mark.hullOwner = wallObject;
+        }
+        return hull;
     }
 
-    /** The convex hull of a game or wall object, the two kinds {@link #hullOwner} returns. */
+    /** The convex hull of a game or wall object, the two kinds {@link #searchHull} keeps. */
     private static Shape hull(TileObject object)
     {
         if (object instanceof GameObject)
@@ -372,8 +448,9 @@ class TargetOverlay extends Overlay
         hull = hull(mark.hullOwner);
         if (hull == null && !(mark.searched && mark.hullOwner == null))
         {
-            // the object found at rebuild has no hull now, or the stream lost its model or hull: search the tile
-            hull = hull(hullOwner(tile));
+            // no stream hull and no owner with a hull: search the tile, once per rebuild when it finds nothing
+            mark.searched = true;
+            hull = searchHull(tile, mark);
         }
         draw(graphics, hull != null ? hull : tilePoly(wallPoints[mark.wall]), mark.colour, mark.dim);
     }

@@ -30,6 +30,7 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.util.List;
 import javax.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -46,9 +47,9 @@ import net.runelite.client.ui.overlay.components.SplitComponent;
  * setting changes. Below them the timer line, whose text is updated in place
  * once per game tick, unless the timer has its own box.
  */
+@Slf4j
 class InfoOverlay extends OverlayPanel
 {
-    private final EfficientTearsOfGuthixConfig config;
     private final StreamAdvisor advisor;
     private final SkillReward skillReward;
     private final SkillIconManager skillIconManager;
@@ -59,10 +60,8 @@ class InfoOverlay extends OverlayPanel
     private boolean timerShown;
 
     @Inject
-    InfoOverlay(EfficientTearsOfGuthixConfig config, StreamAdvisor advisor, SkillReward skillReward,
-        SkillIconManager skillIconManager)
+    InfoOverlay(StreamAdvisor advisor, SkillReward skillReward, SkillIconManager skillIconManager)
     {
-        this.config = config;
         this.advisor = advisor;
         this.skillReward = skillReward;
         this.skillIconManager = skillIconManager;
@@ -76,7 +75,7 @@ class InfoOverlay extends OverlayPanel
     {
         try
         {
-            if (!advisor.inArea() || !advisor.onPlane() || !advisor.showInfo())
+            if (!advisor.inArea() || !advisor.showInfo())
             {
                 return null;
             }
@@ -86,7 +85,7 @@ class InfoOverlay extends OverlayPanel
             if (revision != timerRevision)
             {
                 timerRevision = revision;
-                boolean shown = !advisor.splitTimer() && updateTimer(advisor, timer);
+                boolean shown = !advisor.splitTimer() && TimerLine.update(advisor, timer);
                 rebuild |= shown != timerShown;
                 timerShown = shown;
             }
@@ -96,10 +95,6 @@ class InfoOverlay extends OverlayPanel
                 rebuild();
             }
 
-            if (panelComponent.getChildren().isEmpty())
-            {
-                return null;
-            }
             return super.render(graphics);
         }
         catch (Exception e)
@@ -113,10 +108,6 @@ class InfoOverlay extends OverlayPanel
     {
         List<LayoutableRenderableEntity> lines = panelComponent.getChildren();
         lines.clear();
-        if (!config.showInfo())
-        {
-            return;
-        }
 
         String order = advisor.orderText();
         lines.add(LineComponent.builder()
@@ -132,7 +123,7 @@ class InfoOverlay extends OverlayPanel
                 .build());
         }
 
-        Skill skill = advisor.atEntrance() && config.showSkill() ? skillReward.skill() : null;
+        Skill skill = advisor.atEntrance() && skillReward.showSkill() ? skillReward.skill() : null;
         if (skill != null)
         {
             lines.add(SplitComponent.builder()
@@ -150,43 +141,10 @@ class InfoOverlay extends OverlayPanel
         {
             lines.add(timer);
         }
-    }
-
-    /**
-     * Sets the line to the entry timing at Juna or the session ticks left.
-     * False when there is neither, or the info panel is off.
-     */
-    static boolean updateTimer(StreamAdvisor advisor, LineComponent line)
-    {
-        if (!advisor.showInfo())
+        if (log.isDebugEnabled())
         {
-            return false;
+            log.debug("[info] rebuilt order {} supported {} skill {} timer {}", order, advisor.orderSupported(), skill,
+                timerShown);
         }
-
-        int entryWait = advisor.entryWait();
-        int ticksLeft = advisor.ticksLeft();
-        if (entryWait == 0)
-        {
-            line.setLeft("Enter:");
-            line.setRight("now");
-            line.setRightColor(Color.GREEN);
-        }
-        else if (entryWait > 0)
-        {
-            line.setLeft("Enter in:");
-            line.setRight(entryWait + " ticks");
-            line.setRightColor(Color.WHITE);
-        }
-        else if (ticksLeft > 0)
-        {
-            line.setLeft("Ticks left:");
-            line.setRight(String.valueOf(ticksLeft));
-            line.setRightColor(Color.WHITE);
-        }
-        else
-        {
-            return false;
-        }
-        return true;
     }
 }

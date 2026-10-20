@@ -31,9 +31,11 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("efficienttearsofguthix")
+@ConfigGroup(EfficientTearsOfGuthixConfig.GROUP)
 public interface EfficientTearsOfGuthixConfig extends Config
 {
+    String GROUP = "efficienttearsofguthix";
+
     @ConfigItem(
         keyName = "reactionSpeed",
         name = "Reaction speed",
@@ -303,9 +305,21 @@ public interface EfficientTearsOfGuthixConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "ticksLeftPlace",
+        name = "Ticks left",
+        description = "Interface is above the time bar",
+        section = interfaceSection,
+        position = 55
+    )
+    default TicksLeftPlace ticksLeftPlace()
+    {
+        return TicksLeftPlace.INTERFACE;
+    }
+
+    @ConfigItem(
         keyName = "loginReminder",
         name = "Login reminder",
-        description = "Chat message on login once the next run is open",
+        description = "Chat message on login with the XP skill while a run is open",
         section = interfaceSection,
         position = 60
     )
