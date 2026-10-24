@@ -319,7 +319,7 @@ public interface EfficientTearsOfGuthixConfig extends Config
     @ConfigItem(
         keyName = "loginReminder",
         name = "Login reminder",
-        description = "Chat message on login with the XP skill while a run is open",
+        description = "Chat message on login naming the skill that gets the XP while a run is open",
         section = interfaceSection,
         position = 60
     )
