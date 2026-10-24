@@ -26,8 +26,7 @@ Works on `GGGBBB` and `BBBGGG` worlds.
 - **Wall style**: how a wall with a stream is marked. `Outline` of the stream,
   or `Hull` of the stream filled in. Default `Outline`.
 - **Tile**: marks the tile to stand on in front of those walls. Default `on`.
-- **Second best**: marks the next best wall while you move, in **Second best
-  colour**. Default `on`.
+- **Second best**: Marks second best wall, when not at best wall. Default `on`.
 - **Mark possible walls**: walls the next blue stream can land on, in
   **Possible wall colour**. Default `on`.
 - **Mark bad walls**: walls no blue stream can land on next, or a green one
