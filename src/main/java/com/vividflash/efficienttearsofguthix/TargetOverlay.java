@@ -263,7 +263,7 @@ class TargetOverlay extends Overlay
             }
         }
 
-        // the best wall stays highlighted while you stand on it; the second best only when moving
+        // the best wall stays highlighted while you stand on it; the second best only when not at the best wall
         if (model || tile)
         {
             if (move && second >= 0 && showSecond)

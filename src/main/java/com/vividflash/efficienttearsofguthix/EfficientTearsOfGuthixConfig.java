@@ -198,7 +198,7 @@ public interface EfficientTearsOfGuthixConfig extends Config
     @ConfigItem(
         keyName = "showBad",
         name = "Mark bad walls",
-        description = "Walls no blue stream can land on next, or a green one can",
+        description = "Walls you should not be at",
         section = wallsSection,
         position = 90
     )

@@ -29,8 +29,8 @@ Works on `GGGBBB` and `BBBGGG` worlds.
 - **Second best**: Marks second best wall, when not at best wall. Default `on`.
 - **Mark possible walls**: walls the next blue stream can land on, in
   **Possible wall colour**. Default `on`.
-- **Mark bad walls**: walls no blue stream can land on next, or a green one
-  can, in **Bad wall colour**. Default `off`.
+- **Mark bad walls**: Walls you should not be at, in **Bad wall colour**.
+  Default `off`.
 - **Stream countdown**: ticks until your wall's blue stream moves. Default
   `on`.
 - **Dry wall countdown**: in red, ticks until the wait at a dry wall ends.
