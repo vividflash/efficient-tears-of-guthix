@@ -435,7 +435,7 @@ final class TargetRule
         return true;
     }
 
-    // Ticks until the last blue stream the Reason#WAIT step waits for has moved, 0 when none is
+    // Ticks until the last blue stream the Reason.WAIT step waits for has moved, 0 when none is
     // pending.
     static int waitTicks(int playerWall, int[] colour, int[] ticksUntilMove)
     {

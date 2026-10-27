@@ -366,7 +366,7 @@ public class SkillReward
 
     // The eligible skill with the least XP, the first in ORDER on a tie.
     //
-    // - experience: indexed by Skill#ordinal()
+    // - experience: indexed by Skill.ordinal()
     // - eligible: indexed like ORDER
     static Skill pick(int[] experience, boolean[] eligible)
     {

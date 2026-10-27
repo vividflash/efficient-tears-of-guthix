@@ -67,7 +67,7 @@ public class StreamAdvisor
 {
     private static final int MAX_REPORTS = 200;
     private static final int MAX_TEAR_CHANGES = 10;
-    // How long a tear counter change stays on screen, on the System#nanoTime clock.
+    // How long a tear counter change stays on screen, on the System.nanoTime clock.
     static final long TEAR_CHANGE_NANOS = TimeUnit.MILLISECONDS.toNanos(1800);
 
     private static final Color BLUE_STREAM = new Color(0, 150, 255);
