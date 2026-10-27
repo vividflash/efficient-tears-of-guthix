@@ -51,11 +51,11 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     private static final String CONFIG_GROUP = EfficientTearsOfGuthixConfig.GROUP;
     private static final String LAST_SEEN_VERSION_KEY = "lastSeenVersion";
 
-    /** The release the one-time notice below belongs to, not the packaged version. */
+    // The release the one-time notice below belongs to, not the packaged version.
     static final String VERSION = "0.4";
     private static final String UPDATE_MESSAGE = "Efficient ToG " + VERSION + ": Remaining Tick Timer can now be shown in the Interface, Improved Reminder and stops the Highlights when you are done";
 
-    /** Dark red for the one-time notice, legible on either chatbox background. */
+    // Dark red for the one-time notice, legible on either chatbox background.
     private static final Color UPDATE_MESSAGE_COLOR = new Color(0x8B0000);
 
     @Inject
@@ -91,7 +91,7 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     @Inject
     private BarTicksOverlay barTicksOverlay;
 
-    /** The stored version already equals {@link #VERSION}, so logins skip the config read. */
+    // The stored version already equals VERSION, so logins skip the config read.
     private boolean noticeHandled;
 
     @Override
@@ -124,11 +124,8 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         streamAdvisor.stop();
     }
 
-    /**
-     * Shows the update notice once, on the first login after the version
-     * changes. The stored version gates it; once it matches, a flag skips the
-     * config read on later logins.
-     */
+    // Shows the update notice once, on the first login after the version changes. The stored
+    // version gates it; once it matches, a flag skips the config read on later logins.
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {

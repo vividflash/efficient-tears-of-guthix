@@ -58,25 +58,22 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.util.ColorUtil;
 
-/**
- * Follows the streams, keeps the session countdown and applies the rule for
- * the wall to stand at. Every entry point catches its own failures, so a
- * fault is logged once instead of on every tick or frame. What the overlays
- * and the menu handler need is worked out once per game tick and cached.
- */
+// Follows the streams, keeps the session countdown and applies the rule for the wall to stand at.
+// Every entry point catches its own failures, so a fault is logged once instead of on every tick or
+// frame. What the overlays and the menu handler need is worked out once per game tick and cached.
 @Slf4j
 @Singleton
 public class StreamAdvisor
 {
     private static final int MAX_REPORTS = 200;
     private static final int MAX_TEAR_CHANGES = 10;
-    /** How long a tear counter change stays on screen, on the {@link System#nanoTime} clock. */
+    // How long a tear counter change stays on screen, on the System#nanoTime clock.
     static final long TEAR_CHANGE_NANOS = TimeUnit.MILLISECONDS.toNanos(1800);
 
     private static final Color BLUE_STREAM = new Color(0, 150, 255);
     private static final Color GREEN_STREAM = Color.GREEN;
 
-    /** One change of the tear counter, with its text ready to draw. */
+    // One change of the tear counter, with its text ready to draw.
     static final class TearChange
     {
         final String text;
@@ -100,7 +97,7 @@ public class StreamAdvisor
     private final boolean[] reachable = new boolean[TogLayout.WALLS];
     private final int[] collect = new int[TogLayout.WALLS];
     private final int[] blueSpawns = new int[StreamTracker.STREAMS / 2];
-    /** The wall tiles as of the last game tick, null where not in the scene. */
+    // The wall tiles as of the last game tick, null where not in the scene.
     private final Tile[] wallTiles = new Tile[TogLayout.WALLS];
 
     @Inject
@@ -111,66 +108,66 @@ public class StreamAdvisor
 
     private volatile int target = -1;
     private volatile int second = -1;
-    /** Per wall TargetRule mark. Replaced, never written to. */
+    // Per wall TargetRule mark. Replaced, never written to.
     private volatile int[] marks = TargetRule.NO_MARKS;
     private volatile int ownWall = -1;
     private volatile int ownTicks;
-    /** Ticks until the wait at the dry wall stood at ends, 0 when not waiting or the setting is off. */
+    // Ticks until the wait at the dry wall stood at ends, 0 when not waiting or the setting is off.
     private volatile int dryTicks;
     private volatile boolean shouldMove;
     private volatile int entryWait = -1;
 
-    /** Player in the region, and on the cave's plane, as of the last game tick. */
+    // Player in the region, and on the cave's plane, as of the last game tick.
     private volatile boolean inRegion;
-    /** Stream order as of the last game tick, null while not synced. */
+    // Stream order as of the last game tick, null while not synced.
     private volatile String streamOrder;
-    /** The same with each letter in its stream's colour. */
+    // The same with each letter in its stream's colour.
     private volatile String orderText;
     private volatile boolean orderSupported;
-    /** Changes whenever the cached state does; the overlays rebuild what they draw when it has. */
+    // Changes whenever the cached state does; the overlays rebuild what they draw when it has.
     private final AtomicInteger revision = new AtomicInteger();
-    /** Changes only with the order, the XP skill, being at Juna or a setting. */
+    // Changes only with the order, the XP skill, being at Juna or a setting.
     private final AtomicInteger infoRevision = new AtomicInteger();
     private volatile boolean showInfo;
     private volatile boolean splitTimer;
     private volatile TicksLeftPlace ticksLeftPlace = TicksLeftPlace.INTERFACE;
-    /** False from a clear until the first game tick in the region: lastGameTick is stale until then. */
+    // False from a clear until the first game tick in the region: lastGameTick is stale until then.
     private volatile boolean ticked;
     private volatile boolean deprioritiseJuna;
     private volatile boolean deprioritiseGreen;
     private volatile boolean allowBlueFirst;
     private volatile boolean showTearChange;
-    /** Either kind of wall mark is shown; marks are only worked out then. */
+    // Either kind of wall mark is shown; marks are only worked out then.
     private volatile boolean showMarks;
     private volatile boolean showDryTicks;
     private volatile boolean earlyLast;
 
-    /** Recent tear counter changes, oldest first. */
+    // Recent tear counter changes, oldest first.
     private final Deque<TearChange> tearChanges = new ConcurrentLinkedDeque<>();
     private int lastTears = -1;
-    /** False from the countdown being set until it first drops: the walk in. */
+    // False from the countdown being set until it first drops: the walk in.
     private boolean counting;
-    /** Player tile on the previous tick, -1 when unknown. */
+    // Player tile on the previous tick, -1 when unknown.
     private int lastX = -1;
     private int lastY = -1;
 
-    /** Tick of the last game tick seen. Events before the next one are stamped with it plus one. */
+    // Tick of the last game tick seen. Events before the next one are stamped with it plus one.
     private int lastGameTick;
     private int ticksLeft;
     private int lastCountdown = -1;
-    /** Something is tracked that leaving the region has to clear; outside it nothing else runs. */
+    // Something is tracked that leaving the region has to clear; outside it nothing else runs.
     private boolean needsClear;
-    /** In the region, no session running and off the cave floor: at Juna. */
+    // In the region, no session running and off the cave floor: at Juna.
     private boolean atEntrance;
-    /** Base of the top level view as of the last game tick in the region. */
+    // Base of the top level view as of the last game tick in the region.
     private int baseX;
     private int baseY;
-    /** Scene x and y of each wall for the view base below, -1 where not in the scene. */
+    // Scene x and y of each wall for the view base below, -1 where not in the scene.
     private final int[] wallSceneX = new int[TogLayout.WALLS];
     private final int[] wallSceneY = new int[TogLayout.WALLS];
     private int wallSceneBaseX;
     private int wallSceneBaseY;
-    /** All nine wall scene indices are filled for that base. */
+    // All nine wall scene indices are filled for that base.
     private boolean wallScenesKnown;
 
     void start()
@@ -224,7 +221,7 @@ public class StreamAdvisor
         }
     }
 
-    /** A world hop or scene load can put other streams on the walls: nothing tracked carries over. */
+    // A world hop or scene load can put other streams on the walls: nothing tracked carries over.
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
@@ -335,11 +332,8 @@ public class StreamAdvisor
         }
     }
 
-    /**
-     * A left click on a wall with a green stream walks there instead of
-     * collecting, and until the order is synced and supported a left click on
-     * Juna walks instead of talking.
-     */
+    // A left click on a wall with a green stream walks there instead of collecting, and until the
+    // order is synced and supported a left click on Juna walks instead of talking.
     @Subscribe
     public void onMenuEntryAdded(MenuEntryAdded event)
     {
@@ -388,7 +382,7 @@ public class StreamAdvisor
         }
     }
 
-    /** Logs the stream colour of the wall a click on a weeping wall went to, once per click. */
+    // Logs the stream colour of the wall a click on a weeping wall went to, once per click.
     @Subscribe
     public void onMenuOptionClicked(MenuOptionClicked event)
     {
@@ -427,7 +421,7 @@ public class StreamAdvisor
             || type == MenuAction.GAME_OBJECT_FIFTH_OPTION;
     }
 
-    /** Logged in, and in the region as of the last game tick. */
+    // Logged in, and in the region as of the last game tick.
     boolean inArea()
     {
         return inRegion;
@@ -443,20 +437,20 @@ public class StreamAdvisor
         return streamOrder != null;
     }
 
-    /** The rule runs on this order. */
+    // The rule runs on this order.
     private boolean supported(String order)
     {
         return StreamTracker.EXPECTED_ORDER.equals(order)
             || (StreamTracker.BLUE_FIRST_ORDER.equals(order) && allowBlueFirst);
     }
 
-    /** The rule runs on the current order. False while not synced. */
+    // The rule runs on the current order. False while not synced.
     boolean orderSupported()
     {
         return orderSupported;
     }
 
-    /** The stream order with each letter in its stream's colour. Null while not synced. */
+    // The stream order with each letter in its stream's colour. Null while not synced.
     String orderText()
     {
         return orderText;
@@ -472,13 +466,13 @@ public class StreamAdvisor
         return infoRevision.get();
     }
 
-    /** Something the info panel shows changed outside the advisor. */
+    // Something the info panel shows changed outside the advisor.
     void infoChanged()
     {
         infoRevision.incrementAndGet();
     }
 
-    /** Reads the panel settings again; called on start and on a change of this plugin's config. */
+    // Reads the panel settings again; called on start and on a change of this plugin's config.
     void configChanged()
     {
         showInfo = config.showInfo();
@@ -516,13 +510,13 @@ public class StreamAdvisor
         return showTearChange;
     }
 
-    /** Where the session ticks left show. */
+    // Where the session ticks left show.
     TicksLeftPlace ticksLeftPlace()
     {
         return ticksLeftPlace;
     }
 
-    /** The tile of this wall as of the last game tick, or null. */
+    // The tile of this wall as of the last game tick, or null.
     Tile wallTile(int wall)
     {
         return wallTiles[wall];
@@ -533,43 +527,43 @@ public class StreamAdvisor
         return ticksLeft;
     }
 
-    /** Wall to stand at, or -1 when there is no current answer. */
+    // Wall to stand at, or -1 when there is no current answer.
     int targetWall()
     {
         return target;
     }
 
-    /** Next best wall, or -1. */
+    // Next best wall, or -1.
     int secondWall()
     {
         return second;
     }
 
-    /** Wall whose collect tile the player stands on, or -1. */
+    // Wall whose collect tile the player stands on, or -1.
     int ownWall()
     {
         return ownWall;
     }
 
-    /** Ticks until the blue stream on the wall the player stands at moves, 0 when there is none. */
+    // Ticks until the blue stream on the wall the player stands at moves, 0 when there is none.
     int ownTicks()
     {
         return ownTicks;
     }
 
-    /** Ticks until the wait at the dry wall stood at ends, 0 when not waiting or the setting is off. */
+    // Ticks until the wait at the dry wall stood at ends, 0 when not waiting or the setting is off.
     int dryTicks()
     {
         return dryTicks;
     }
 
-    /** The wall the rule picked is not the one the player stands at. */
+    // The wall the rule picked is not the one the player stands at.
     boolean shouldMove()
     {
         return shouldMove;
     }
 
-    /** Ticks to wait before the last dialog click at Juna, 0 for now, -1 when not waiting to enter. */
+    // Ticks to wait before the last dialog click at Juna, 0 for now, -1 when not waiting to enter.
     int entryWait()
     {
         return entryWait;
@@ -580,13 +574,13 @@ public class StreamAdvisor
         return tearChanges;
     }
 
-    /** Per wall TargetRule mark. Read only. */
+    // Per wall TargetRule mark. Read only.
     int[] wallMarks()
     {
         return marks;
     }
 
-    /** Logs each distinct failure once. */
+    // Logs each distinct failure once.
     void report(String where, Exception e)
     {
         String key = where + ": " + e;
@@ -632,14 +626,11 @@ public class StreamAdvisor
         revision.incrementAndGet();
     }
 
-    /**
-     * The change of the tear counter to show, 0 for none. A fall to 0 from more
-     * than 1 is the counter being reset by a death, not a loss. A fall
-     * from exactly 1 cannot be told apart from a loss and is shown.
-     * Inside the minigame the counter only goes back to 0 when the player dies
-     * to the poison, and no other way out of a started run keeps that week's
-     * run, so a drop to 0 from more than 1 is treated as that reset, not a loss.
-     */
+    // The change of the tear counter to show, 0 for none. A fall to 0 from more than 1 is the
+    // counter being reset by a death, not a loss. A fall from exactly 1 cannot be told apart from a
+    // loss and is shown. Inside the minigame the counter only goes back to 0 when the player dies
+    // to the poison, and no other way out of a started run keeps that week's run, so a drop to 0
+    // from more than 1 is treated as that reset, not a loss.
     static int shownChange(int last, int now)
     {
         if (last < 0 || now == last || (now == 0 && last != 1))
@@ -649,7 +640,7 @@ public class StreamAdvisor
         return now - last;
     }
 
-    /** Records a change of the tear counter and drops the ones that have run their time. */
+    // Records a change of the tear counter and drops the ones that have run their time.
     private void tearChange(int tears)
     {
         long now = System.nanoTime();
@@ -682,7 +673,7 @@ public class StreamAdvisor
         lastTears = tears;
     }
 
-    /** Each letter in its stream's colour. */
+    // Each letter in its stream's colour.
     private static String coloured(String order)
     {
         StringBuilder text = new StringBuilder(order.length() * 20);
@@ -694,11 +685,8 @@ public class StreamAdvisor
         return text.toString();
     }
 
-    /**
-     * Only live observations count; the per tick wall read covers everything
-     * else. That includes anything before the first game tick after a clear,
-     * which could not be given a tick.
-     */
+    // Only live observations count; the per tick wall read covers everything else. That includes
+    // anything before the first game tick after a clear, which could not be given a tick.
     private void streamEvent(DecorativeObject object, boolean spawned)
     {
         if (object == null || !ticked)
@@ -751,11 +739,8 @@ public class StreamAdvisor
         }
     }
 
-    /**
-     * Reads the nine wall tiles into {@code seen} and keeps the tiles for the
-     * overlay. False when any of them is not in the scene. The view base is
-     * the one stored by this tick.
-     */
+    // Reads the nine wall tiles into seen and keeps the tiles for the overlay. False when any of
+    // them is not in the scene. The view base is the one stored by this tick.
     private boolean readWalls(WorldView view)
     {
         Arrays.fill(wallTiles, null);
@@ -802,10 +787,8 @@ public class StreamAdvisor
         return complete;
     }
 
-    /**
-     * Applies the rule while the streams are synced in the expected order and
-     * the session has not ended; otherwise there is no target.
-     */
+    // Applies the rule while the streams are synced in the expected order and the session has not
+    // ended; otherwise there is no target.
     private void decide(int tick, WorldPoint position)
     {
         TargetRule.Decision decision = null;

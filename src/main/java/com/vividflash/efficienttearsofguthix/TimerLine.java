@@ -27,17 +27,15 @@ package com.vividflash.efficienttearsofguthix;
 import java.awt.Color;
 import net.runelite.client.ui.overlay.components.LineComponent;
 
-/** The timer line shared by the info panel and the timer's own box. */
+// The timer line shared by the info panel and the timer's own box.
 final class TimerLine
 {
     private TimerLine()
     {
     }
 
-    /**
-     * Sets the line to the entry timing at Juna or the session ticks left.
-     * False when there is neither, or the info panel is off.
-     */
+    // Sets the line to the entry timing at Juna or the session ticks left. False when there is
+    // neither, or the info panel is off.
     static boolean update(StreamAdvisor advisor, LineComponent line)
     {
         if (!advisor.showInfo())

@@ -24,7 +24,7 @@
  */
 package com.vividflash.efficienttearsofguthix;
 
-/** How the target overlay draws a marked wall that has a stream on it. */
+// How the target overlay draws a marked wall that has a stream on it.
 public enum WallStyle
 {
     OUTLINE("Outline"),

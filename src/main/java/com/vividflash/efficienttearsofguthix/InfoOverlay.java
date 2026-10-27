@@ -42,11 +42,9 @@ import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.SplitComponent;
 
-/**
- * Stream order and at Juna the XP skill, rebuilt only when one of them or a
- * setting changes. Below them the timer line, whose text is updated in place
- * once per game tick, unless the timer has its own box.
- */
+// Stream order and at Juna the XP skill, rebuilt only when one of them or a setting changes. Below
+// them the timer line, whose text is updated in place once per game tick, unless the timer has its
+// own box.
 @Slf4j
 class InfoOverlay extends OverlayPanel
 {

@@ -38,12 +38,9 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
-/**
- * The session ticks left, centred in the empty space above the time bar of
- * the minigame panel. The setting and the ticks left are read once per game
- * tick, the bar's bounds each frame, and the text is moved only when the bar
- * moves.
- */
+// The session ticks left, centred in the empty space above the time bar of the minigame panel. The
+// setting and the ticks left are read once per game tick, the bar's bounds each frame, and the text
+// is moved only when the bar moves.
 class BarTicksOverlay extends Overlay
 {
     static final int GAP = 4;
@@ -51,13 +48,13 @@ class BarTicksOverlay extends Overlay
     private final Client client;
     private final StreamAdvisor advisor;
 
-    /** The advisor revision the widget and text were read at. */
+    // The advisor revision the widget and text were read at.
     private int builtRevision = -1;
-    /** The time bar, or null when there are no ticks left or the setting is off. */
+    // The time bar, or null when there are no ticks left or the setting is off.
     private Widget widget;
     private String text;
     private int textWidth;
-    /** The bar bounds the point was placed at. */
+    // The bar bounds the point was placed at.
     private Rectangle bounds;
     private Point point;
 
@@ -109,7 +106,7 @@ class BarTicksOverlay extends Overlay
         return null;
     }
 
-    /** The text baseline: centred on the bar, {@link #GAP} pixels above it. */
+    // The text baseline: centred on the bar, GAP pixels above it.
     static Point textPoint(Rectangle bar, int textWidth)
     {
         return new Point(bar.x + (bar.width - textWidth) / 2, bar.y - GAP);
