@@ -48,7 +48,7 @@ final class TimerLine
         if (entryWait == 0)
         {
             line.setLeft("Enter:");
-            line.setRight("now");
+            line.setRight("now " + advisor.entryNowLeft());
             line.setRightColor(Color.GREEN);
         }
         else if (entryWait > 0)

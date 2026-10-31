@@ -70,6 +70,17 @@ public interface EfficientTearsOfGuthixConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "holdEntry",
+        name = "Block entry unless correct timing",
+        description = "Blocks the click and space that start the walk in until the enter timing says now",
+        position = 35
+    )
+    default boolean holdEntry()
+    {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "allowBlueFirst",
         name = "Allow BBBGGG worlds",
         description = "",
@@ -257,6 +268,18 @@ public interface EfficientTearsOfGuthixConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "hideOrder",
+        name = "Hide order past Juna",
+        description = "",
+        section = interfaceSection,
+        position = 15
+    )
+    default boolean hideOrder()
+    {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "splitTimer",
         name = "Separate timer box",
         description = "Enter timing and ticks left in their own box",
@@ -326,5 +349,17 @@ public interface EfficientTearsOfGuthixConfig extends Config
     default boolean loginReminder()
     {
         return false;
+    }
+
+    @ConfigItem(
+        keyName = "runSummary",
+        name = "Run summary",
+        description = "Chat message after the reward with the tears and XP gained",
+        section = interfaceSection,
+        position = 70
+    )
+    default boolean runSummary()
+    {
+        return true;
     }
 }

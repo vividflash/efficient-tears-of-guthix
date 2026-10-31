@@ -358,6 +358,13 @@ final class TargetRule
         return untilBest - ENTRY_EARLY;
     }
 
+    // While entryWait is 0: the ticks "now" still lasts, this one included, down to 1 on its last tick.
+    static int entryNowLeft(int lastBlueMove, int period, int now)
+    {
+        int untilBest = Math.floorMod(lastBlueMove - ENTRY_LEAD - now, period);
+        return Math.floorMod(untilBest + ENTRY_LATE, period) + 1;
+    }
+
     // The move tick of the blue stream that moves last, from the spawn ticks of the three blue
     // streams. They move on consecutive ticks, also when some of them have already moved in the
     // current rotation.

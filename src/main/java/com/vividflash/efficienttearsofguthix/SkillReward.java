@@ -48,6 +48,7 @@ import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.util.QuantityFormatter;
 
 // The skill the tears' XP goes to if played now, and the login reminder from the game's line that
 // the next run is open until the run is done, the day ends or the plugin stops.
@@ -74,6 +75,10 @@ public class SkillReward
     static final String ELIGIBLE_MESSAGE = "You are eligible to drink from the Tears of Guthix.";
     // The game's line at the end of a run.
     private static final String RUN_END_MESSAGE = "Tears collected: ";
+    // The game's line when the time in the cave ends, before the reward.
+    private static final String TIME_UP_MESSAGE = "Your time in the cave is up.";
+    // Ticks after the end line to wait for the reward's XP.
+    private static final int SUMMARY_WAIT_TICKS = 3;
 
 
     @Inject
@@ -117,6 +122,12 @@ public class SkillReward
     // this week's run is still open, so the flag lives from the day's first eligible line until the
     // run ends, the game day ends at 00:00 UTC or the plugin shuts down; on start no run is open.
     private final Map<Long, LocalDate> runOpen = new ConcurrentHashMap<>();
+    // The XP per skill when the time in the cave ended, null outside the reward.
+    private volatile int[] rewardStartXp;
+    // The tears of the run that just ended, -1 while no end of run line is due.
+    private volatile int summaryTears = -1;
+    // Ticks left to wait for the reward's XP.
+    private int summaryWait;
 
     void start()
     {
@@ -126,6 +137,8 @@ public class SkillReward
         loginPending = false;
         eligibleSeen = false;
         reminded = false;
+        rewardStartXp = null;
+        summaryTears = -1;
         Arrays.fill(lastXp, -1);
         runOpen.clear();
         readConfig();
@@ -195,6 +208,8 @@ public class SkillReward
                 eligibleSeen = false;
                 reminded = false;
                 junaPending = false;
+                rewardStartXp = null;
+                summaryTears = -1;
                 Arrays.fill(lastXp, -1);
             }
         }
@@ -247,6 +262,16 @@ public class SkillReward
             {
                 runOpen.remove(client.getAccountHash());
                 log.debug("[reminder] run done, open flag cleared");
+                if (rewardStartXp != null)
+                {
+                    summaryTears = parseTears(event.getMessage());
+                    summaryWait = SUMMARY_WAIT_TICKS;
+                }
+            }
+            else if (event.getMessage().contains(TIME_UP_MESSAGE) && config.runSummary())
+            {
+                rewardStartXp = client.getSkillExperiences().clone();
+                log.debug("[summary] XP read at the end of the time");
             }
         }
         catch (Exception e)
@@ -260,6 +285,11 @@ public class SkillReward
     {
         try
         {
+            if (summaryTears >= 0)
+            {
+                postSummary();
+            }
+
             if (checkPending && client.getOverallExperience() > 0)
             {
                 checkPending = false;
@@ -333,6 +363,62 @@ public class SkillReward
         remind(gameLine
             ? "The ToG XP goes to " + picked.getName() + "."
             : "Tears of Guthix is ready. The XP goes to " + picked.getName() + ".");
+    }
+
+    // Posts the end of run line once the reward's XP has arrived.
+    private void postSummary()
+    {
+        int[] now = client.getSkillExperiences();
+        Skill gained = biggestGain(rewardStartXp, now);
+        if (gained == null && --summaryWait > 0)
+        {
+            return;
+        }
+
+        if (log.isDebugEnabled())
+        {
+            log.debug("[summary] tears {} skill {} wait left {}", summaryTears, gained, summaryWait);
+        }
+        if (gained != null)
+        {
+            remind(summaryLine(summaryTears, gained, now[gained.ordinal()] - rewardStartXp[gained.ordinal()]));
+        }
+        rewardStartXp = null;
+        summaryTears = -1;
+    }
+
+    // The number after the game's end of run prefix, 0 when it cannot be read.
+    static int parseTears(String message)
+    {
+        int start = message.indexOf(RUN_END_MESSAGE) + RUN_END_MESSAGE.length();
+        int end = start;
+        while (end < message.length() && Character.isDigit(message.charAt(end)))
+        {
+            end++;
+        }
+        return end == start ? 0 : Integer.parseInt(message.substring(start, end));
+    }
+
+    // The skill that gained the most XP, null when none did. Both arrays are indexed by Skill.ordinal().
+    static Skill biggestGain(int[] before, int[] after)
+    {
+        Skill best = null;
+        int bestGain = 0;
+        for (Skill candidate : ORDER)
+        {
+            int gain = after[candidate.ordinal()] - before[candidate.ordinal()];
+            if (gain > bestGain)
+            {
+                best = candidate;
+                bestGain = gain;
+            }
+        }
+        return best;
+    }
+
+    static String summaryLine(int tears, Skill skill, int xp)
+    {
+        return "Tears of Guthix: " + tears + " tears, " + QuantityFormatter.formatNumber(xp) + " " + skill.getName() + " XP.";
     }
 
     // Per entry of ORDER, whether the game counts that skill.

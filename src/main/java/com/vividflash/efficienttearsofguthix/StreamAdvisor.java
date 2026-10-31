@@ -116,6 +116,8 @@ public class StreamAdvisor
     private volatile int dryTicks;
     private volatile boolean shouldMove;
     private volatile int entryWait = -1;
+    // The ticks "now" still lasts, while entryWait is 0.
+    private volatile int entryNowLeft;
 
     // Player in the region, and on the cave's plane, as of the last game tick.
     private volatile boolean inRegion;
@@ -129,6 +131,7 @@ public class StreamAdvisor
     // Changes only with the order, the XP skill, being at Juna or a setting.
     private final AtomicInteger infoRevision = new AtomicInteger();
     private volatile boolean showInfo;
+    private volatile boolean hideOrder;
     private volatile boolean splitTimer;
     private volatile TicksLeftPlace ticksLeftPlace = TicksLeftPlace.INTERFACE;
     // False from a clear until the first game tick in the region: lastGameTick is stale until then.
@@ -450,6 +453,12 @@ public class StreamAdvisor
         return orderSupported;
     }
 
+    // The rule runs on the current order, but it is the weaker one.
+    boolean orderBlueFirst()
+    {
+        return orderSupported && StreamTracker.BLUE_FIRST_ORDER.equals(streamOrder);
+    }
+
     // The stream order with each letter in its stream's colour. Null while not synced.
     String orderText()
     {
@@ -476,6 +485,7 @@ public class StreamAdvisor
     void configChanged()
     {
         showInfo = config.showInfo();
+        hideOrder = config.hideOrder();
         splitTimer = config.splitTimer();
         ticksLeftPlace = config.ticksLeftPlace();
         deprioritiseJuna = config.deprioritiseJuna();
@@ -487,8 +497,9 @@ public class StreamAdvisor
         earlyLast = config.reactionSpeed() == ReactionSpeed.ONE_TICK;
         if (log.isDebugEnabled())
         {
-            log.debug("[config] info {} splitTimer {} ticksLeft {} tearChange {} marks {} dryTicks {} reaction {}",
-                showInfo, splitTimer, ticksLeftPlace, showTearChange, showMarks, showDryTicks, config.reactionSpeed());
+            log.debug("[config] info {} hideOrder {} splitTimer {} ticksLeft {} tearChange {} marks {} dryTicks {} reaction {} allowBlueFirst {} deprioJuna {} deprioGreen {}",
+                showInfo, hideOrder, splitTimer, ticksLeftPlace, showTearChange, showMarks, showDryTicks, config.reactionSpeed(),
+                allowBlueFirst, deprioritiseJuna, deprioritiseGreen);
         }
         infoRevision.incrementAndGet();
         // the timer overlays follow revision, so a new Ticks left place shows without waiting for a tick
@@ -498,6 +509,11 @@ public class StreamAdvisor
     boolean showInfo()
     {
         return showInfo;
+    }
+
+    boolean hideOrder()
+    {
+        return hideOrder;
     }
 
     boolean splitTimer()
@@ -567,6 +583,11 @@ public class StreamAdvisor
     int entryWait()
     {
         return entryWait;
+    }
+
+    int entryNowLeft()
+    {
+        return entryNowLeft;
     }
 
     Deque<TearChange> tearChanges()
@@ -846,6 +867,8 @@ public class StreamAdvisor
         {
             return -1;
         }
-        return TargetRule.entryWait(TargetRule.lastBlueMove(spawns, tracker.period()), tracker.period(), tick);
+        int lastBlueMove = TargetRule.lastBlueMove(spawns, tracker.period());
+        entryNowLeft = TargetRule.entryNowLeft(lastBlueMove, tracker.period(), tick);
+        return TargetRule.entryWait(lastBlueMove, tracker.period(), tick);
     }
 }

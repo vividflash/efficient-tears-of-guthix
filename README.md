@@ -16,7 +16,9 @@ Works on `GGGBBB` and `BBBGGG` worlds.
   `on`.
 - **Deprioritise Juna**: until the stream order is synced and supported,
   left click on Juna walks. Default `on`.
-- **Allow BBBGGG worlds**: off treats `BBBGGG` worlds as not supported.
+- **Block entry unless correct timing**: blocks the click and space that start the walk
+  in until the enter timing says now. Default `on`.
+- **Allow BBBGGG worlds**: off treats `BBBGGG` worlds as not efficient.
   Default `on`.
 
 **Walls & Tiles**
@@ -40,6 +42,8 @@ Works on `GGGBBB` and `BBBGGG` worlds.
 
 - **Info panel**: stream order, session ticks left, and at Juna when to
   enter. Default `on`.
+- **Hide order past Juna**: shows the stream order at Juna only. Default
+  `on`.
 - **Separate timer box**: the entry timing and ticks left in a box of their
   own. Default `off`.
 - **XP skill**: at Juna, the skill that gets the XP. Default `on`.
@@ -51,3 +55,5 @@ Works on `GGGBBB` and `BBBGGG` worlds.
   the time bar) or `Both`. Default `Interface`.
 - **Login reminder**: chat message on login naming the skill that gets the XP
   while a run is open. Default `off`.
+- **Run summary**: chat message after the reward with the tears and XP
+  gained. Default `on`.

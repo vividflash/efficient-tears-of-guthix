@@ -77,6 +77,9 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     private SkillReward skillReward;
 
     @Inject
+    private EntryGuard entryGuard;
+
+    @Inject
     private TargetOverlay targetOverlay;
 
     @Inject
@@ -102,6 +105,8 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         eventBus.register(streamAdvisor);
         skillReward.start();
         eventBus.register(skillReward);
+        entryGuard.start();
+        eventBus.register(entryGuard);
         targetOverlay.configChanged();
         overlayManager.add(targetOverlay);
         overlayManager.add(infoOverlay);
@@ -118,6 +123,8 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         overlayManager.remove(timerOverlay);
         overlayManager.remove(tearChangeOverlay);
         overlayManager.remove(barTicksOverlay);
+        eventBus.unregister(entryGuard);
+        entryGuard.stop();
         eventBus.unregister(skillReward);
         skillReward.stop();
         eventBus.unregister(streamAdvisor);
@@ -157,6 +164,7 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         {
             // before the advisor: its revision bump rebuilds overlays that read these caches
             skillReward.configChanged();
+            entryGuard.configChanged();
             targetOverlay.configChanged();
             streamAdvisor.configChanged();
         }

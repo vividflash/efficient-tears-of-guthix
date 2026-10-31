@@ -29,6 +29,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import javax.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
 import net.runelite.api.gameval.InterfaceID;
@@ -41,6 +42,7 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 // The session ticks left, centred in the empty space above the time bar of the minigame panel. The
 // setting and the ticks left are read once per game tick, the bar's bounds each frame, and the text
 // is moved only when the bar moves.
+@Slf4j
 class BarTicksOverlay extends Overlay
 {
     static final int GAP = 4;
@@ -77,12 +79,17 @@ class BarTicksOverlay extends Overlay
             {
                 builtRevision = revision;
                 int ticksLeft = advisor.ticksLeft();
+                Widget last = widget;
                 widget = advisor.ticksLeftPlace().inInterface() && ticksLeft > 0
                     ? client.getWidget(InterfaceID.TogSidepanel.BAR)
                     : null;
                 text = widget == null ? null : String.valueOf(ticksLeft);
                 textWidth = widget == null ? 0 : graphics.getFontMetrics().stringWidth(text);
                 bounds = null;
+                if ((widget == null) != (last == null) && log.isDebugEnabled())
+                {
+                    log.debug("[bar] drawn {} place {} ticks left {}", widget != null, advisor.ticksLeftPlace(), ticksLeft);
+                }
             }
 
             if (widget == null || widget.isHidden())
@@ -95,6 +102,10 @@ class BarTicksOverlay extends Overlay
             {
                 bounds = bar;
                 point = textPoint(bar, textWidth);
+                if (log.isDebugEnabled())
+                {
+                    log.debug("[bar] bar {} text at {}", bar, point);
+                }
             }
 
             OverlayUtil.renderTextLocation(graphics, point, text, Color.WHITE);
