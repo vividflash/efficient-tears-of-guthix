@@ -24,7 +24,7 @@
  */
 package com.vividflash.efficienttearsofguthix;
 
-/** Where the session ticks left show. */
+// Where the session ticks left show.
 public enum TicksLeftPlace
 {
     OVERLAY("Overlay"),

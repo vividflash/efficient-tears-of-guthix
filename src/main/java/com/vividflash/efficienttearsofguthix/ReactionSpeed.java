@@ -24,7 +24,7 @@
  */
 package com.vividflash.efficienttearsofguthix;
 
-/** Ticks the player takes to click after the target changes. */
+// Ticks the player takes to click after the target changes.
 public enum ReactionSpeed
 {
     INSTANT("0"),

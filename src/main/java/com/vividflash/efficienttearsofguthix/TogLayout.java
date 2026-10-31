@@ -27,12 +27,12 @@ package com.vividflash.efficienttearsofguthix;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 
-/** Fixed geometry of the Tears of Guthix cave floor. No client types, so it can be unit tested. */
+// Fixed geometry of the Tears of Guthix cave floor. No client types, so it can be unit tested.
 final class TogLayout
 {
     static final int WALLS = 9;
     static final int PLANE = 2;
-    /** Region id of the Tears of Guthix cave. */
+    // Region id of the Tears of Guthix cave.
     static final int REGION = 12948;
 
     private static final int[] WALL_X = {3257, 3258, 3259, 3261, 3261, 3261, 3259, 3258, 3257};
@@ -42,7 +42,7 @@ final class TogLayout
 
     private static final int BASE_X = 3256;
     private static final int BASE_Y = 9515;
-    /** The tile where the walk in from the entrance ends. */
+    // The tile where the walk in from the entrance ends.
     static final int ENTRY_X = 3257;
     static final int ENTRY_Y = 9517;
     private static final int SIZE = 5;
@@ -75,7 +75,7 @@ final class TogLayout
         return COLLECT_Y[wall];
     }
 
-    /** The cross: a 3 wide column and a 3 high row, so the four corners of the 5x5 block are solid. */
+    // The cross: a 3 wide column and a 3 high row, so the four corners of the 5x5 block are solid.
     static boolean isFloor(int x, int y)
     {
         int dx = x - BASE_X;
@@ -87,22 +87,20 @@ final class TogLayout
         return (dx >= 1 && dx <= 3) || (dy >= 1 && dy <= 3);
     }
 
-    /**
-     * Walking ticks from this tile on the cross to each cell of the 5x5 block;
-     * {@link #collectCell} gives a wall's index into it. Read only.
-     */
+    // Walking ticks from this tile on the cross to each cell of the 5x5 block; collectCell gives a
+    // wall's index into it. Read only.
     static int[] floorDistances(int x, int y)
     {
         return FLOOR_DISTANCE[cell(x, y)];
     }
 
-    /** The cell of this wall's collect tile, for {@link #floorDistances}. */
+    // The cell of this wall's collect tile, for floorDistances.
     static int collectCell(int wall)
     {
         return COLLECT_CELL[wall];
     }
 
-    /** Wall served by this collect tile, or -1. */
+    // Wall served by this collect tile, or -1.
     static int wallAtCollectTile(int x, int y)
     {
         for (int wall = 0; wall < WALLS; wall++)
@@ -115,7 +113,7 @@ final class TogLayout
         return -1;
     }
 
-    /** Wall standing on this tile, or -1. */
+    // Wall standing on this tile, or -1.
     static int wallOnTile(int x, int y)
     {
         for (int wall = 0; wall < WALLS; wall++)

@@ -53,11 +53,9 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 
-/**
- * Marks the wall the rule picked, the next best one, and where the waiting
- * blue streams can and cannot land. What to mark is worked out once per game
- * tick; a frame only projects it onto the canvas.
- */
+// Marks the wall the rule picked, the next best one, and where the waiting blue streams can and
+// cannot land. What to mark is worked out once per game tick; a frame only projects it onto the
+// canvas.
 class TargetOverlay extends Overlay
 {
     private static final Stroke STROKE = new BasicStroke(2);
@@ -73,22 +71,20 @@ class TargetOverlay extends Overlay
     private static final Color DRY_TICKS_COLOR = Color.RED;
     private static final int TICKS_HEIGHT = 120;
 
-    /** One wall to mark. A dim mark is a thin outline without a fill. */
+    // One wall to mark. A dim mark is a thin outline without a fill.
     private static final class Mark
     {
         final int wall;
         final boolean tile;
         final boolean model;
-        /** How to draw the object on the wall, or null when it has no model to draw. */
+        // How to draw the object on the wall, or null when it has no model to draw.
         final WallStyle style;
         final Color colour;
         final boolean dim;
-        /**
-         * The object whose hull is drawn when there is no model or stream hull to draw, found by
-         * the first frame that needs one and replaced when a later search finds another.
-         */
+        // The object whose hull is drawn when there is no model or stream hull to draw, found by
+        // the first frame that needs one and replaced when a later search finds another.
         TileObject hullOwner;
-        /** A frame searched the tile for a hull owner, so a null hullOwner means there is none. */
+        // A frame searched the tile for a hull owner, so a null hullOwner means there is none.
         boolean searched;
 
         Mark(int wall, boolean model, boolean tile, Color colour, boolean dim, WallStyle style)
@@ -107,21 +103,22 @@ class TargetOverlay extends Overlay
     private final StreamAdvisor advisor;
     private final ModelOutlineRenderer outlineRenderer;
 
-    /** The advisor revision the fields below were built from. */
+    // The advisor revision the fields below were built from.
     private int builtRevision = -1;
     private final List<Mark> marks = new ArrayList<>();
     private final LocalPoint[] wallPoints = new LocalPoint[TogLayout.WALLS];
     private final LocalPoint[] collectPoints = new LocalPoint[TogLayout.WALLS];
-    /** The view and view base the points above were worked out for. */
+    // The view and view base the points above were worked out for.
     private WorldView pointsView;
     private int pointsBaseX;
     private int pointsBaseY;
-    /** Wall to draw the stream countdown on, or -1. */
+    // Wall to draw the stream countdown on, or -1.
     private int ticksWall = -1;
     private String ticksText;
     private Color ticksColour;
 
-    /** The settings, read again on a config change; the advisor's revision bump that follows rebuilds with them. */
+    // The settings, read again on a config change; the advisor's revision bump that follows
+    // rebuilds with them.
     private volatile boolean highlightWall;
     private volatile WallStyle wallStyle;
     private volatile boolean highlightTile;
@@ -146,7 +143,8 @@ class TargetOverlay extends Overlay
         setLayer(OverlayLayer.ABOVE_SCENE);
     }
 
-    /** Reads the settings again; called on start and on a change of this plugin's config, before the advisor's. */
+    // Reads the settings again; called on start and on a change of this plugin's config, before the
+    // advisor's.
     void configChanged()
     {
         highlightWall = config.highlightWall();
@@ -205,7 +203,7 @@ class TargetOverlay extends Overlay
         return null;
     }
 
-    /** Once per game tick: which walls to mark in which colour, and the countdown text. */
+    // Once per game tick: which walls to mark in which colour, and the countdown text.
     private void rebuild()
     {
         marks.clear();
@@ -263,7 +261,7 @@ class TargetOverlay extends Overlay
             }
         }
 
-        // the best wall stays highlighted while you stand on it; the second best only when moving
+        // the best wall stays highlighted while you stand on it; the second best only when not at the best wall
         if (model || tile)
         {
             if (move && second >= 0 && showSecond)
@@ -297,10 +295,8 @@ class TargetOverlay extends Overlay
         }
     }
 
-    /**
-     * The walls do not move, so their points are worked out again only when the
-     * view or its base changed, or for one that was not in the scene.
-     */
+    // The walls do not move, so their points are worked out again only when the view or its base
+    // changed, or for one that was not in the scene.
     private void updatePoints(WorldView view, boolean collect)
     {
         int baseX = view.getBaseX();
@@ -336,7 +332,7 @@ class TargetOverlay extends Overlay
         }
     }
 
-    /** The hull of the whole stream object: both renderables, joined when both have one. */
+    // The hull of the whole stream object: both renderables, joined when both have one.
     private static Shape streamHull(DecorativeObject tears)
     {
         Shape first = tears.getConvexHull();
@@ -351,10 +347,8 @@ class TargetOverlay extends Overlay
         return area;
     }
 
-    /**
-     * The hull of the first object on the tile that has a convex hull right now: a game object, else
-     * the wall object. A found object becomes the mark's hull owner; null when there is none.
-     */
+    // The hull of the first object on the tile that has a convex hull right now: a game object,
+    // else the wall object. A found object becomes the mark's hull owner; null when there is none.
     private static Shape searchHull(Tile tile, Mark mark)
     {
         // an owner whose hull is gone is dropped, so a search that finds nothing is not repeated
@@ -382,7 +376,7 @@ class TargetOverlay extends Overlay
         return hull;
     }
 
-    /** The convex hull of a game or wall object, the two kinds {@link #searchHull} keeps. */
+    // The convex hull of a game or wall object, the two kinds searchHull keeps.
     private static Shape hull(TileObject object)
     {
         if (object instanceof GameObject)
@@ -392,7 +386,7 @@ class TargetOverlay extends Overlay
         return object instanceof WallObject ? ((WallObject) object).getConvexHull() : null;
     }
 
-    /** Ticks until the blue stream on the wall the player stands at moves, drawn on that wall. */
+    // Ticks until the blue stream on the wall the player stands at moves, drawn on that wall.
     private void streamTicks(Graphics2D graphics)
     {
         LocalPoint local = wallPoints[ticksWall];
@@ -411,7 +405,8 @@ class TargetOverlay extends Overlay
         graphics.setFont(previous);
     }
 
-    /** Checked once per rebuild: a blue or green stream always has a model, a dry wall's object is asked. */
+    // Checked once per rebuild: a blue or green stream always has a model, a dry wall's object is
+    // asked.
     private boolean hasModel(int wall)
     {
         Tile tile = advisor.wallTile(wall);
@@ -420,7 +415,8 @@ class TargetOverlay extends Overlay
             && (StreamAdvisor.colourOf(tears.getId()) != TargetRule.EMPTY || tears.getConvexHull() != null);
     }
 
-    /** Draws the object on the wall in the wall style; without a model, the hull of what stands there, or its tile. */
+    // Draws the object on the wall in the wall style; without a model, the hull of what stands
+    // there, or its tile.
     private void markWall(Graphics2D graphics, Mark mark)
     {
         Tile tile = advisor.wallTile(mark.wall);

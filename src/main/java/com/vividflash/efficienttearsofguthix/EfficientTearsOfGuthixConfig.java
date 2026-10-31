@@ -70,6 +70,17 @@ public interface EfficientTearsOfGuthixConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "holdEntry",
+        name = "Block entry unless correct timing",
+        description = "Stops you from entering until timing says now",
+        position = 35
+    )
+    default boolean holdEntry()
+    {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "allowBlueFirst",
         name = "Allow BBBGGG worlds",
         description = "",
@@ -198,7 +209,7 @@ public interface EfficientTearsOfGuthixConfig extends Config
     @ConfigItem(
         keyName = "showBad",
         name = "Mark bad walls",
-        description = "Walls no blue stream can land on next, or a green one can",
+        description = "Walls you should not be at",
         section = wallsSection,
         position = 90
     )
@@ -252,6 +263,18 @@ public interface EfficientTearsOfGuthixConfig extends Config
         position = 10
     )
     default boolean showInfo()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "hideOrder",
+        name = "Hide order past Juna",
+        description = "Hides the stream order inside the minigame",
+        section = interfaceSection,
+        position = 15
+    )
+    default boolean hideOrder()
     {
         return true;
     }
@@ -317,14 +340,38 @@ public interface EfficientTearsOfGuthixConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "ticksFollowBar",
+        name = "Ticks left follows bar",
+        description = "The number stays centered above the remaining bar as the bar empties",
+        section = interfaceSection,
+        position = 57
+    )
+    default boolean ticksFollowBar()
+    {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = "loginReminder",
         name = "Login reminder",
-        description = "Chat message on login with the XP skill while a run is open",
+        description = "Chat message on login naming the skill that gets the XP while a run is open",
         section = interfaceSection,
         position = 60
     )
     default boolean loginReminder()
     {
         return false;
+    }
+
+    @ConfigItem(
+        keyName = "runSummary",
+        name = "Run summary",
+        description = "Chat message after the reward with the tears and XP gained",
+        section = interfaceSection,
+        position = 70
+    )
+    default boolean runSummary()
+    {
+        return true;
     }
 }

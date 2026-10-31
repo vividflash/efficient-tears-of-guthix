@@ -16,8 +16,10 @@ Works on `GGGBBB` and `BBBGGG` worlds.
   `on`.
 - **Deprioritise Juna**: until the stream order is synced and supported,
   left click on Juna walks. Default `on`.
-- **Allow BBBGGG worlds**: off treats `BBBGGG` worlds as not supported.
-  Default `on`.
+- **Block entry unless correct timing**: stops you from entering until timing
+  says "now". Default `on`.
+- **Allow BBBGGG worlds**: off treats `BBBGGG` worlds as not efficient and
+  blocks entry. Default `on`.
 
 **Walls & Tiles**
 
@@ -26,12 +28,11 @@ Works on `GGGBBB` and `BBBGGG` worlds.
 - **Wall style**: how a wall with a stream is marked. `Outline` of the stream,
   or `Hull` of the stream filled in. Default `Outline`.
 - **Tile**: marks the tile to stand on in front of those walls. Default `on`.
-- **Second best**: marks the next best wall while you move, in **Second best
-  colour**. Default `on`.
+- **Second best**: Marks second best wall, when not at best wall. Default `on`.
 - **Mark possible walls**: walls the next blue stream can land on, in
   **Possible wall colour**. Default `on`.
-- **Mark bad walls**: walls no blue stream can land on next, or a green one
-  can, in **Bad wall colour**. Default `off`.
+- **Mark bad walls**: Walls you should not be at, in **Bad wall colour**.
+  Default `off`.
 - **Stream countdown**: ticks until your wall's blue stream moves. Default
   `on`.
 - **Dry wall countdown**: in red, ticks until the wait at a dry wall ends.
@@ -41,6 +42,8 @@ Works on `GGGBBB` and `BBBGGG` worlds.
 
 - **Info panel**: stream order, session ticks left, and at Juna when to
   enter. Default `on`.
+- **Hide order past Juna**: hides the stream order inside the minigame.
+  Default `on`.
 - **Separate timer box**: the entry timing and ticks left in a box of their
   own. Default `off`.
 - **XP skill**: at Juna, the skill that gets the XP. Default `on`.
@@ -50,5 +53,9 @@ Works on `GGGBBB` and `BBBGGG` worlds.
   `on`.
 - **Ticks left**: `Overlay` (info panel or timer box), `Interface` (above
   the time bar) or `Both`. Default `Interface`.
-- **Login reminder**: chat message on login with the XP skill while a run is
-  open. Default `off`.
+- **Ticks left follows bar**: the number stays centered above the remaining
+  bar as the bar empties. Default `off`.
+- **Login reminder**: chat message on login naming the skill that gets the XP
+  while a run is open. Default `off`.
+- **Run summary**: chat message after the reward with the tears and XP
+  gained. Default `on`.

@@ -32,7 +32,7 @@ import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
 
-/** The entry timing or session ticks left in a box of its own, updated in place once per game tick. */
+// The entry timing or session ticks left in a box of its own, updated in place once per game tick.
 class TimerOverlay extends OverlayPanel
 {
     private final StreamAdvisor advisor;

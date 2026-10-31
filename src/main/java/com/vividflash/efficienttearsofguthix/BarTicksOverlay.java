@@ -29,6 +29,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import javax.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
 import net.runelite.api.gameval.InterfaceID;
@@ -38,28 +39,33 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
-/**
- * The session ticks left, centred in the empty space above the time bar of
- * the minigame panel. The setting and the ticks left are read once per game
- * tick, the bar's bounds each frame, and the text is moved only when the bar
- * moves.
- */
+// The session ticks left, centred in the empty space above the time bar of the minigame panel. The
+// setting and the ticks left are read once per game tick, the bar's bounds each frame, and the text
+// is moved only when the bar moves.
+@Slf4j
 class BarTicksOverlay extends Overlay
 {
     static final int GAP = 4;
+    // The bar's width when full. The widget shrinks to the right edge of the fill as time runs out,
+    // only its left edge stays put.
+    static final int FULL_WIDTH = 125;
 
     private final Client client;
     private final StreamAdvisor advisor;
 
-    /** The advisor revision the widget and text were read at. */
+    // The advisor revision the widget and text were read at.
     private int builtRevision = -1;
-    /** The time bar, or null when there are no ticks left or the setting is off. */
+    // The time bar, or null when there are no ticks left or the setting is off.
     private Widget widget;
     private String text;
     private int textWidth;
-    /** The bar bounds the point was placed at. */
+    // The Ticks left follow bar setting, as of the last read.
+    private boolean follow;
+    // The bar bounds the point was placed at.
     private Rectangle bounds;
     private Point point;
+    // The bar bounds last logged.
+    private Rectangle loggedBar;
 
     @Inject
     BarTicksOverlay(Client client, StreamAdvisor advisor)
@@ -80,12 +86,18 @@ class BarTicksOverlay extends Overlay
             {
                 builtRevision = revision;
                 int ticksLeft = advisor.ticksLeft();
+                Widget last = widget;
                 widget = advisor.ticksLeftPlace().inInterface() && ticksLeft > 0
                     ? client.getWidget(InterfaceID.TogSidepanel.BAR)
                     : null;
                 text = widget == null ? null : String.valueOf(ticksLeft);
                 textWidth = widget == null ? 0 : graphics.getFontMetrics().stringWidth(text);
+                follow = advisor.ticksFollowBar();
                 bounds = null;
+                if ((widget == null) != (last == null) && log.isDebugEnabled())
+                {
+                    log.debug("[bar] drawn {} place {} ticks left {}", widget != null, advisor.ticksLeftPlace(), ticksLeft);
+                }
             }
 
             if (widget == null || widget.isHidden())
@@ -97,7 +109,12 @@ class BarTicksOverlay extends Overlay
             if (!bar.equals(bounds))
             {
                 bounds = bar;
-                point = textPoint(bar, textWidth);
+                point = textPoint(bar, textWidth, follow);
+                if (log.isDebugEnabled() && !bar.equals(loggedBar))
+                {
+                    loggedBar = bar;
+                    log.debug("[bar] bar {} text at {}", bar, point);
+                }
             }
 
             OverlayUtil.renderTextLocation(graphics, point, text, Color.WHITE);
@@ -109,9 +126,10 @@ class BarTicksOverlay extends Overlay
         return null;
     }
 
-    /** The text baseline: centred on the bar, {@link #GAP} pixels above it. */
-    static Point textPoint(Rectangle bar, int textWidth)
+    // The text baseline: centred on the full bar, or on what is left of it when following, GAP
+    // pixels above it.
+    static Point textPoint(Rectangle bar, int textWidth, boolean follow)
     {
-        return new Point(bar.x + (bar.width - textWidth) / 2, bar.y - GAP);
+        return new Point(bar.x + ((follow ? bar.width : FULL_WIDTH) - textWidth) / 2, bar.y - GAP);
     }
 }

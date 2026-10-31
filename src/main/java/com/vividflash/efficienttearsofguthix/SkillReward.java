@@ -48,20 +48,16 @@ import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.util.QuantityFormatter;
 
-/**
- * The skill the tears' XP goes to if played now, and the login reminder from
- * the game's line that the next run is open until the run is done, the day
- * ends or the plugin stops.
- */
+// The skill the tears' XP goes to if played now, and the login reminder from the game's line that
+// the next run is open until the run is done, the day ends or the plugin stops.
 @Slf4j
 @Singleton
 public class SkillReward
 {
-    /**
-     * The game's tie-break order: the skill with the least XP gets the tears,
-     * on a tie the first eligible one in this list.
-     */
+    // The game's tie-break order: the skill with the least XP gets the tears, on a tie the first
+    // eligible one in this list.
     static final Skill[] ORDER = {
         Skill.ATTACK, Skill.STRENGTH, Skill.RANGED, Skill.MAGIC, Skill.DEFENCE, Skill.HITPOINTS,
         Skill.PRAYER, Skill.AGILITY, Skill.HERBLORE, Skill.THIEVING, Skill.CRAFTING, Skill.RUNECRAFT,
@@ -69,18 +65,20 @@ public class SkillReward
         Skill.FLETCHING, Skill.SLAYER, Skill.FARMING, Skill.CONSTRUCTION, Skill.HUNTER, Skill.SAILING
     };
 
-    /**
-     * Quest progress values at which the game unlocks Runecraft, Herblore and
-     * Sailing: the quests' end states, as checked by the XP lamp script.
-     */
+    // Quest progress values at which the game unlocks Runecraft, Herblore and Sailing: the quests'
+    // end states, as checked by the XP lamp script.
     private static final int RUNE_MYSTERIES_DONE = 6;
     private static final int DRUIDIC_RITUAL_DONE = 4;
     private static final int PANDEMONIUM_DONE = 50;
 
-    /** The game's line on the first login of the day while the next run is open. */
+    // The game's line on the first login of the day while the next run is open.
     static final String ELIGIBLE_MESSAGE = "You are eligible to drink from the Tears of Guthix.";
-    /** The game's line at the end of a run. */
+    // The game's line at the end of a run.
     private static final String RUN_END_MESSAGE = "Tears collected: ";
+    // The game's line when the time in the cave ends, before the reward.
+    private static final String TIME_UP_MESSAGE = "Your time in the cave is up.";
+    // Ticks after the end line to wait for the reward's XP.
+    private static final int SUMMARY_WAIT_TICKS = 3;
 
 
     @Inject
@@ -96,36 +94,40 @@ public class SkillReward
     private StreamAdvisor advisor;
 
     private volatile Skill skill;
-    /** The login screen was seen, so the next login is not a world hop. */
+    // The login screen was seen, so the next login is not a world hop.
     private volatile boolean fromLoginScreen;
-    /** Logged in from the login screen, the open flag is still to be checked. */
+    // Logged in from the login screen, the open flag is still to be checked.
     private volatile boolean loginPending;
-    /** The game said the next run is open: remind on the next tick with stats loaded. */
+    // The game said the next run is open: remind on the next tick with stats loaded.
     private volatile boolean eligibleSeen;
-    /** Reminded since the last login, so the game's line after a flag reminder adds nothing. */
+    // Reminded since the last login, so the game's line after a flag reminder adds nothing.
     private volatile boolean reminded;
-    /** Juna came into the scene: pick the skill on the next tick with stats loaded. */
+    // Juna came into the scene: pick the skill on the next tick with stats loaded.
     private volatile boolean junaPending;
-    /** What set {@link #junaPending}, for the debug log: juna, stat or config. */
+    // What set junaPending, for the debug log: juna, stat or config.
     private volatile String junaTrigger = "config";
-    /** A world hop is under way, so the next login is not from the login screen. */
+    // A world hop is under way, so the next login is not from the login screen.
     private volatile boolean hopping;
-    /** A login or world hop whose reminder check is still to be logged. */
+    // A login or world hop whose reminder check is still to be logged.
     private volatile boolean checkPending;
-    /** The pending check is for a login from the login screen, not a world hop. */
+    // The pending check is for a login from the login screen, not a world hop.
     private volatile boolean checkFromLogin;
-    /** The XP skill setting, cached for the spawn handler. */
+    // The XP skill setting, cached for the spawn handler.
     private volatile boolean showSkill;
-    /** The XP skill and its refresh setting both on, cached for the stat handler. */
+    // The XP skill and its refresh setting both on, cached for the stat handler.
     private volatile boolean refreshSkill;
-    /** Per skill the XP of its last stat change, -1 before the first one since the login screen. */
+    // Per skill the XP of its last stat change, -1 before the first one since the login screen.
     private final int[] lastXp = new int[Skill.values().length];
-    /**
-     * Per account hash, the UTC day the game's eligible line was seen. No game state says whether
-     * this week's run is still open, so the flag lives from the day's first eligible line until the
-     * run ends, the game day ends at 00:00 UTC or the plugin shuts down; on start no run is open.
-     */
+    // Per account hash, the UTC day the game's eligible line was seen. No game state says whether
+    // this week's run is still open, so the flag lives from the day's first eligible line until the
+    // run ends, the game day ends at 00:00 UTC or the plugin shuts down; on start no run is open.
     private final Map<Long, LocalDate> runOpen = new ConcurrentHashMap<>();
+    // The XP per skill when the time in the cave ended, null outside the reward.
+    private volatile int[] rewardStartXp;
+    // The tears of the run that just ended, -1 while no end of run line is due.
+    private volatile int summaryTears = -1;
+    // Ticks left to wait for the reward's XP.
+    private int summaryWait;
 
     void start()
     {
@@ -135,6 +137,8 @@ public class SkillReward
         loginPending = false;
         eligibleSeen = false;
         reminded = false;
+        rewardStartXp = null;
+        summaryTears = -1;
         Arrays.fill(lastXp, -1);
         runOpen.clear();
         readConfig();
@@ -147,7 +151,7 @@ public class SkillReward
         runOpen.clear();
     }
 
-    /** A setting changed: pick again, so turning the XP skill on at Juna shows it. */
+    // A setting changed: pick again, so turning the XP skill on at Juna shows it.
     void configChanged()
     {
         readConfig();
@@ -161,17 +165,15 @@ public class SkillReward
         refreshSkill = showSkill && config.refreshSkill();
     }
 
-    /**
-     * The skill the tears' XP goes to if played now, as of the last login, the
-     * last time Juna came into the scene, or with the refresh setting on the
-     * last XP gain in the cave. Null before the first pick.
-     */
+    // The skill the tears' XP goes to if played now, as of the last login, the last time Juna came
+    // into the scene, or with the refresh setting on the last XP gain in the cave. Null before the
+    // first pick.
     Skill skill()
     {
         return skill;
     }
 
-    /** The XP skill setting, as of the last config read. */
+    // The XP skill setting, as of the last config read.
     boolean showSkill()
     {
         return showSkill;
@@ -206,6 +208,8 @@ public class SkillReward
                 eligibleSeen = false;
                 reminded = false;
                 junaPending = false;
+                rewardStartXp = null;
+                summaryTears = -1;
                 Arrays.fill(lastXp, -1);
             }
         }
@@ -225,7 +229,7 @@ public class SkillReward
         }
     }
 
-    /** With the refresh setting on, an XP gain in the cave picks the skill again. */
+    // With the refresh setting on, an XP gain in the cave picks the skill again.
     @Subscribe
     public void onStatChanged(StatChanged event)
     {
@@ -258,6 +262,16 @@ public class SkillReward
             {
                 runOpen.remove(client.getAccountHash());
                 log.debug("[reminder] run done, open flag cleared");
+                if (rewardStartXp != null)
+                {
+                    summaryTears = parseTears(event.getMessage());
+                    summaryWait = SUMMARY_WAIT_TICKS;
+                }
+            }
+            else if (advisor.inArea() && event.getMessage().contains(TIME_UP_MESSAGE) && config.runSummary())
+            {
+                rewardStartXp = client.getSkillExperiences().clone();
+                log.debug("[summary] XP read at the end of the time");
             }
         }
         catch (Exception e)
@@ -271,6 +285,11 @@ public class SkillReward
     {
         try
         {
+            if (summaryTears >= 0)
+            {
+                postSummary();
+            }
+
             if (checkPending && client.getOverallExperience() > 0)
             {
                 checkPending = false;
@@ -326,14 +345,14 @@ public class SkillReward
         }
     }
 
-    /** True when the reminder is due. */
+    // True when the reminder is due.
     private boolean reminderDue()
     {
         // the open flag covers every login after the game's first one of the day
         return !reminded && config.loginReminder() && (eligibleSeen || (loginPending && runOpen()));
     }
 
-    /** Posts the reminder for this skill; below the game's own line it only adds the skill. */
+    // Posts the reminder for this skill; below the game's own line it only adds the skill.
     private void postReminder(Skill picked, boolean gameLine)
     {
         reminded = true;
@@ -346,7 +365,64 @@ public class SkillReward
             : "Tears of Guthix is ready. The XP goes to " + picked.getName() + ".");
     }
 
-    /** Per entry of {@link #ORDER}, whether the game counts that skill. */
+    // Posts the end of run line once the reward's XP has arrived.
+    // Nothing else gives XP in the cave, so any gain is the reward. A run without XP posts no line, on purpose.
+    private void postSummary()
+    {
+        int[] now = client.getSkillExperiences();
+        Skill gained = biggestGain(rewardStartXp, now);
+        if (gained == null && --summaryWait > 0)
+        {
+            return;
+        }
+
+        if (log.isDebugEnabled())
+        {
+            log.debug("[summary] tears {} skill {} wait left {}", summaryTears, gained, summaryWait);
+        }
+        if (gained != null)
+        {
+            remind(summaryLine(summaryTears, gained, now[gained.ordinal()] - rewardStartXp[gained.ordinal()]));
+        }
+        rewardStartXp = null;
+        summaryTears = -1;
+    }
+
+    // The number after the game's end of run prefix, 0 when it cannot be read.
+    static int parseTears(String message)
+    {
+        int start = message.indexOf(RUN_END_MESSAGE) + RUN_END_MESSAGE.length();
+        int end = start;
+        while (end < message.length() && Character.isDigit(message.charAt(end)))
+        {
+            end++;
+        }
+        return end == start ? 0 : Integer.parseInt(message.substring(start, end));
+    }
+
+    // The skill that gained the most XP, null when none did. Both arrays are indexed by Skill.ordinal().
+    static Skill biggestGain(int[] before, int[] after)
+    {
+        Skill best = null;
+        int bestGain = 0;
+        for (Skill candidate : ORDER)
+        {
+            int gain = after[candidate.ordinal()] - before[candidate.ordinal()];
+            if (gain > bestGain)
+            {
+                best = candidate;
+                bestGain = gain;
+            }
+        }
+        return best;
+    }
+
+    static String summaryLine(int tears, Skill skill, int xp)
+    {
+        return "Tears of Guthix: " + tears + " tears, " + QuantityFormatter.formatNumber(xp) + " " + skill.getName() + " XP.";
+    }
+
+    // Per entry of ORDER, whether the game counts that skill.
     private boolean[] eligible()
     {
         boolean[] eligible = new boolean[ORDER.length];
@@ -375,12 +451,10 @@ public class SkillReward
         return eligible;
     }
 
-    /**
-     * The eligible skill with the least XP, the first in {@link #ORDER} on a tie.
-     *
-     * @param experience indexed by {@link Skill#ordinal()}
-     * @param eligible indexed like {@link #ORDER}
-     */
+    // The eligible skill with the least XP, the first in ORDER on a tie.
+    //
+    // - experience: indexed by Skill.ordinal()
+    // - eligible: indexed like ORDER
     static Skill pick(int[] experience, boolean[] eligible)
     {
         Skill best = null;
@@ -394,7 +468,7 @@ public class SkillReward
         return best;
     }
 
-    /** The game's eligible line was seen today on this account and no run has ended since. */
+    // The game's eligible line was seen today on this account and no run has ended since.
     private boolean runOpen()
     {
         return LocalDate.now(ZoneOffset.UTC).equals(runOpen.get(client.getAccountHash()));

@@ -38,11 +38,8 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
-/**
- * Each change of the tear counter, rising beside the counter for a moment.
- * Only the rise is per frame; the setting and the counter's place on screen
- * are read once per game tick.
- */
+// Each change of the tear counter, rising beside the counter for a moment. Only the rise is per
+// frame; the setting and the counter's place on screen are read once per game tick.
 class TearChangeOverlay extends Overlay
 {
     private static final int RISE = 40;
@@ -51,9 +48,9 @@ class TearChangeOverlay extends Overlay
     private final Client client;
     private final StreamAdvisor advisor;
 
-    /** The advisor revision the field below was read at. */
+    // The advisor revision the field below was read at.
     private int builtRevision = -1;
-    /** Bounds of the tear counter, or null when it is not shown or the setting is off. */
+    // Bounds of the tear counter, or null when it is not shown or the setting is off.
     private Rectangle counter;
 
     @Inject

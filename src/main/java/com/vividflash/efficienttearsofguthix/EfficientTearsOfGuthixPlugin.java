@@ -43,7 +43,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
     name = "Efficient Tears of Guthix",
-    description = "Experimental: Highlights the efficient spot(s) in ToG.",
+    description = "Experimental: Highlights the Efficient Spot(s) in ToG",
     tags = {"tears", "guthix", "tog", "minigame"}
 )
 public class EfficientTearsOfGuthixPlugin extends Plugin
@@ -51,11 +51,11 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     private static final String CONFIG_GROUP = EfficientTearsOfGuthixConfig.GROUP;
     private static final String LAST_SEEN_VERSION_KEY = "lastSeenVersion";
 
-    /** The release the one-time notice below belongs to, not the packaged version. */
-    static final String VERSION = "0.4";
-    private static final String UPDATE_MESSAGE = "Efficient ToG " + VERSION + ": Remaining Tick Timer can now be shown in the Interface, Improved Reminder and stops the Highlights when you are done";
+    // The release the one-time notice below belongs to, not the packaged version.
+    static final String VERSION = "0.5";
+    private static final String UPDATE_MESSAGE = "Efficient ToG " + VERSION + ": Option to Block Entry during the chat unless your Timing is correct";
 
-    /** Dark red for the one-time notice, legible on either chatbox background. */
+    // Dark red for the one-time notice, legible on either chatbox background.
     private static final Color UPDATE_MESSAGE_COLOR = new Color(0x8B0000);
 
     @Inject
@@ -77,6 +77,9 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     private SkillReward skillReward;
 
     @Inject
+    private EntryGuard entryGuard;
+
+    @Inject
     private TargetOverlay targetOverlay;
 
     @Inject
@@ -91,7 +94,7 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
     @Inject
     private BarTicksOverlay barTicksOverlay;
 
-    /** The stored version already equals {@link #VERSION}, so logins skip the config read. */
+    // The stored version already equals VERSION, so logins skip the config read.
     private boolean noticeHandled;
 
     @Override
@@ -102,6 +105,8 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         eventBus.register(streamAdvisor);
         skillReward.start();
         eventBus.register(skillReward);
+        entryGuard.start();
+        eventBus.register(entryGuard);
         targetOverlay.configChanged();
         overlayManager.add(targetOverlay);
         overlayManager.add(infoOverlay);
@@ -118,17 +123,16 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         overlayManager.remove(timerOverlay);
         overlayManager.remove(tearChangeOverlay);
         overlayManager.remove(barTicksOverlay);
+        eventBus.unregister(entryGuard);
+        entryGuard.stop();
         eventBus.unregister(skillReward);
         skillReward.stop();
         eventBus.unregister(streamAdvisor);
         streamAdvisor.stop();
     }
 
-    /**
-     * Shows the update notice once, on the first login after the version
-     * changes. The stored version gates it; once it matches, a flag skips the
-     * config read on later logins.
-     */
+    // Shows the update notice once, on the first login after the version changes. The stored
+    // version gates it; once it matches, a flag skips the config read on later logins.
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
@@ -160,6 +164,7 @@ public class EfficientTearsOfGuthixPlugin extends Plugin
         {
             // before the advisor: its revision bump rebuilds overlays that read these caches
             skillReward.configChanged();
+            entryGuard.configChanged();
             targetOverlay.configChanged();
             streamAdvisor.configChanged();
         }

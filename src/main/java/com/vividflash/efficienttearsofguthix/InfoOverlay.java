@@ -42,11 +42,9 @@ import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.SplitComponent;
 
-/**
- * Stream order and at Juna the XP skill, rebuilt only when one of them or a
- * setting changes. Below them the timer line, whose text is updated in place
- * once per game tick, unless the timer has its own box.
- */
+// Stream order and at Juna the XP skill, rebuilt only when one of them or a setting changes. Below
+// them the timer line, whose text is updated in place once per game tick, unless the timer has its
+// own box.
 @Slf4j
 class InfoOverlay extends OverlayPanel
 {
@@ -95,7 +93,7 @@ class InfoOverlay extends OverlayPanel
                 rebuild();
             }
 
-            return super.render(graphics);
+            return panelComponent.getChildren().isEmpty() ? null : super.render(graphics);
         }
         catch (Exception e)
         {
@@ -109,21 +107,32 @@ class InfoOverlay extends OverlayPanel
         List<LayoutableRenderableEntity> lines = panelComponent.getChildren();
         lines.clear();
 
+        boolean entrance = advisor.atEntrance();
         String order = advisor.orderText();
-        lines.add(LineComponent.builder()
-            .left("Order:")
-            .right(order == null ? "syncing" : order)
-            .build());
-
-        if (order != null && !advisor.orderSupported())
+        if (entrance || !advisor.hideOrder())
         {
             lines.add(LineComponent.builder()
-                .left("Order not supported")
-                .leftColor(Color.RED)
+                .left("Order:")
+                .right(order == null ? "syncing" : order)
                 .build());
+
+            if (order != null && !advisor.orderSupported())
+            {
+                lines.add(LineComponent.builder()
+                    .left("Order not efficient")
+                    .leftColor(Color.RED)
+                    .build());
+            }
+            else if (entrance && advisor.orderBlueFirst())
+            {
+                lines.add(LineComponent.builder()
+                    .left("Ok, GGGBBB best")
+                    .leftColor(Color.YELLOW)
+                    .build());
+            }
         }
 
-        Skill skill = advisor.atEntrance() && skillReward.showSkill() ? skillReward.skill() : null;
+        Skill skill = entrance && skillReward.showSkill() ? skillReward.skill() : null;
         if (skill != null)
         {
             lines.add(SplitComponent.builder()

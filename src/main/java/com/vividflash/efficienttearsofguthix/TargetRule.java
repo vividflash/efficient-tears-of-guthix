@@ -24,11 +24,8 @@
  */
 package com.vividflash.efficienttearsofguthix;
 
-/**
- * Fixed rule for the wall to stand at. A pure function of the wall colours,
- * the blue streams' remaining ticks and the player tile. No client types, so
- * it can be unit tested.
- */
+// Fixed rule for the wall to stand at. A pure function of the wall colours, the blue streams'
+// remaining ticks and the player tile. No client types, so it can be unit tested.
 final class TargetRule
 {
     static final int EMPTY = 0;
@@ -38,49 +35,44 @@ final class TargetRule
     static final int STOP_DELAY = 0;
     static final int START_DELAY = 2;
 
-    /**
-     * Ticks of collecting a blue stream has to offer to be worth walking to,
-     * by its place among the blue streams in moving order. The wall of an
-     * earlier one can still get a later one, the last one's wall cannot, so
-     * the first is worth walking to for its wall alone. Chosen by simulation
-     * over 0 to 4 per place, on the worst entry timing and at 0 to 2 ticks of
-     * reaction.
-     */
+    // Ticks of collecting a blue stream has to offer to be worth walking to, by its place among the
+    // blue streams in moving order. The wall of an earlier one can still get a later one, the last
+    // one's wall cannot, so the first is worth walking to for its wall alone. Chosen by simulation
+    // over 0 to 4 per place, on the worst entry timing and at 0 to 2 ticks of reaction.
     private static final int[] MIN_COLLECT = {0, 1, 3};
 
-    /**
-     * With this many session ticks or fewer left, and the session ending as
-     * the next burst starts, no later stream is worth planning for: one tick
-     * of collecting is enough for any blue stream, and the one offering the
-     * most ticks before the session ends is picked. Ending anywhere else in
-     * the rotation, this scored worse than the plain rule in simulation.
-     */
+    // With this many session ticks or fewer left, and the session ending as the next burst starts,
+    // no later stream is worth planning for: one tick of collecting is enough for any blue stream,
+    // and the one offering the most ticks before the session ends is picked. Ending anywhere else
+    // in the rotation, this scored worse than the plain rule in simulation.
     static final int ENDGAME = 16;
 
-    /** Session end ticks after the last blue stream's move, mod the period, at which the endgame applies. */
+    // Session end ticks after the last blue stream's move, mod the period, at which the endgame
+    // applies.
     private static final int[] ENDGAME_OFFSETS = {15, 0};
-    /** A stream always lasts 16 ticks in game, so the endgame uses this fixed period, not the learned one. */
+    // A stream always lasts 16 ticks in game, so the endgame uses this fixed period, not the
+    // learned one.
     private static final int PERIOD = StreamTracker.DEFAULT_PERIOD;
 
-    /** A blue stream this close to moving counts as part of the current burst. */
+    // A blue stream this close to moving counts as part of the current burst.
     static final int BURST_WINDOW = 2;
 
     static final int MARK_NONE = 0;
-    /** No blue stream can land here in the current rotation. */
+    // No blue stream can land here in the current rotation.
     static final int MARK_BAD = 1;
-    /** A blue stream that has not moved yet can land here. */
+    // A blue stream that has not moved yet can land here.
     static final int MARK_POSSIBLE = 2;
-    /** No marks on any wall. Shared, never written to. */
+    // No marks on any wall. Shared, never written to.
     static final int[] NO_MARKS = new int[TogLayout.WALLS];
 
-    /** Ticks from the first stream's move to the last one's. */
+    // Ticks from the first stream's move to the last one's.
     private static final int BURST_LENGTH = 6;
 
-    /** Ticks from the last dialog click at Juna to having control inside. */
+    // Ticks from the last dialog click at Juna to having control inside.
     static final int ENTRY_LEAD = 12;
-    /** Control this many ticks before the last blue stream lands is still a good start. */
+    // Control this many ticks before the last blue stream lands is still a good start.
     private static final int ENTRY_EARLY = 2;
-    /** And this many ticks after it. */
+    // And this many ticks after it.
     private static final int ENTRY_LATE = 3;
 
     private static final int WALLS = TogLayout.WALLS;
@@ -99,12 +91,12 @@ final class TargetRule
 
     static final class Decision
     {
-        /** Wall to stand at, or -1. */
+        // Wall to stand at, or -1.
         final int target;
-        /** Nearest reachable blue wall other than the target, or -1. */
+        // Nearest reachable blue wall other than the target, or -1.
         final int second;
         final Reason reason;
-        /** Wall whose collect tile the player stands on, or -1. */
+        // Wall whose collect tile the player stands on, or -1.
         final int playerWall;
 
         Decision(int target, int second, Reason reason, int playerWall)
@@ -120,14 +112,13 @@ final class TargetRule
     {
     }
 
-    /**
-     * @param walking the player moved this tick; the previous target is then kept
-     *     while it can still be reached, also on another wall's collect tile
-     * @param sessionLeft session ticks left, 1 on the last tick that collects, 0 when no session is running
-     * @param earlyLast on the last blue of a burst, target the wall the first blue moved to as soon as it
-     *     lands, and keep it until the move, so the click can be timed on the stream countdown
-     * @param collect ticks of collecting each wall still offers; only compared in the endgame
-     */
+    // - walking: the player moved this tick; the previous target is then kept while it can still be
+    //   reached, also on another wall's collect tile
+    // - sessionLeft: session ticks left, 1 on the last tick that collects, 0 when no session is
+    //   running
+    // - earlyLast: on the last blue of a burst, target the wall the first blue moved to as soon as
+    //   it lands, and keep it until the move, so the click can be timed on the stream countdown
+    // - collect: ticks of collecting each wall still offers; only compared in the endgame
     static Decision decide(int[] colour, int[] ticksUntilMove, int playerX, int playerY, int previousTarget,
         boolean walking, int sessionLeft, boolean earlyLast, int[] distance, boolean[] reachable, int[] collect)
     {
@@ -213,7 +204,7 @@ final class TargetRule
         return new Decision(target, second, reason, playerWall);
     }
 
-    /** How many other blue streams move before the one on this wall. */
+    // How many other blue streams move before the one on this wall.
     private static int blueRank(int wall, int[] colour, int[] ticksUntilMove)
     {
         int rank = 0;
@@ -227,27 +218,21 @@ final class TargetRule
         return rank;
     }
 
-    /**
-     * Where the blue streams that are about to move can and cannot land. Once
-     * a green stream has moved, its new wall is bad and so is the wall of the
-     * blue stream that moves last. Once all three have moved, the empty walls
-     * and the walls of the other waiting blue streams are possible. No marks
-     * outside that window.
-     *
-     * @param ticksUntilMove per wall, ticks until its stream moves, at least 1
-     */
+    // Where the blue streams that are about to move can and cannot land. Once a green stream has
+    // moved, its new wall is bad and so is the wall of the blue stream that moves last. Once all
+    // three have moved, the empty walls and the walls of the other waiting blue streams are
+    // possible. No marks outside that window.
+    //
+    // - ticksUntilMove: per wall, ticks until its stream moves, at least 1
     static int[] marks(int[] colour, int[] ticksUntilMove, int period, boolean blueFirst)
     {
         return blueFirst ? blueFirstMarks(colour, ticksUntilMove, period) : marks(colour, ticksUntilMove, period);
     }
 
-    /**
-     * The same for an order in which the blue streams move first. From one tick
-     * before the first blue stream moves, the empty walls and the walls of the
-     * blue streams that move before the last one are possible, and the last
-     * one's wall is bad. Once all three have landed and until the green streams
-     * have, every wall a green stream can land on is bad.
-     */
+    // The same for an order in which the blue streams move first. From one tick before the first
+    // blue stream moves, the empty walls and the walls of the blue streams that move before the
+    // last one are possible, and the last one's wall is bad. Once all three have landed and until
+    // the green streams have, every wall a green stream can land on is bad.
     private static int[] blueFirstMarks(int[] colour, int[] ticksUntilMove, int period)
     {
         int half = BURST_LENGTH / 2;
@@ -308,7 +293,7 @@ final class TargetRule
         return NO_MARKS;
     }
 
-    /** Marks for the order in which the green streams move first. */
+    // Marks for the order in which the green streams move first.
     static int[] marks(int[] colour, int[] ticksUntilMove, int period)
     {
         int movedGreens = 0;
@@ -359,12 +344,10 @@ final class TargetRule
         return marks;
     }
 
-    /**
-     * Ticks to wait before the last dialog click at Juna, so that control
-     * inside starts around the tick the last blue stream lands. 0 means now.
-     *
-     * @param lastBlueMove a tick on which the last blue stream of the rotation moves
-     */
+    // Ticks to wait before the last dialog click at Juna, so that control inside starts around the
+    // tick the last blue stream lands. 0 means now.
+    //
+    // - lastBlueMove: a tick on which the last blue stream of the rotation moves
     static int entryWait(int lastBlueMove, int period, int now)
     {
         int untilBest = Math.floorMod(lastBlueMove - ENTRY_LEAD - now, period);
@@ -375,11 +358,16 @@ final class TargetRule
         return untilBest - ENTRY_EARLY;
     }
 
-    /**
-     * The move tick of the blue stream that moves last, from the spawn ticks of
-     * the three blue streams. They move on consecutive ticks, also when some of
-     * them have already moved in the current rotation.
-     */
+    // While entryWait is 0: the ticks "now" still lasts, this one included, down to 1 on its last tick.
+    static int entryNowLeft(int lastBlueMove, int period, int now)
+    {
+        int untilBest = Math.floorMod(lastBlueMove - ENTRY_LEAD - now, period);
+        return Math.floorMod(untilBest + ENTRY_LATE, period) + 1;
+    }
+
+    // The move tick of the blue stream that moves last, from the spawn ticks of the three blue
+    // streams. They move on consecutive ticks, also when some of them have already moved in the
+    // current rotation.
     static int lastBlueMove(int[] blueSpawnTicks, int period)
     {
         for (int candidate : blueSpawnTicks)
@@ -406,12 +394,9 @@ final class TargetRule
         return latest + period;
     }
 
-    /**
-     * On the last blue of a burst, the wall the first blue moved to: picked once it
-     * lands with {@link #BURST_WINDOW} ticks left here, then kept while reachable.
-     * Blues that move before the one here are ignored. -1 when there is no such
-     * wall; the normal leave-last step then applies.
-     */
+    // On the last blue of a burst, the wall the first blue moved to: picked once it lands with
+    // BURST_WINDOW ticks left here, then kept while reachable. Blues that move before the one here
+    // are ignored. -1 when there is no such wall; the normal leave-last step then applies.
     private static int earlyTarget(int playerWall, int previousTarget, int[] colour, int[] ticksUntilMove,
         boolean[] reachable, int[] distance, int[] prefer)
     {
@@ -438,7 +423,7 @@ final class TargetRule
         return own == BURST_WINDOW ? nearestBlue(playerWall, reachable, distance, ticksUntilMove, prefer) : -1;
     }
 
-    /** The stream here is about to move and every other blue one has already moved on. */
+    // The stream here is about to move and every other blue one has already moved on.
     private static boolean lastOfBurst(int playerWall, int[] colour, int[] ticksUntilMove)
     {
         int own = ticksUntilMove[playerWall];
@@ -457,10 +442,8 @@ final class TargetRule
         return true;
     }
 
-    /**
-     * Ticks until the last blue stream the {@link Reason#WAIT} step waits for
-     * has moved, 0 when none is pending.
-     */
+    // Ticks until the last blue stream the Reason.WAIT step waits for has moved, 0 when none is
+    // pending.
     static int waitTicks(int playerWall, int[] colour, int[] ticksUntilMove)
     {
         int ticks = 0;
@@ -486,17 +469,15 @@ final class TargetRule
         return false;
     }
 
-    /** A blue stream on another wall than the one stood at moves within {@link #BURST_WINDOW} ticks. */
+    // A blue stream on another wall than the one stood at moves within BURST_WINDOW ticks.
     private static boolean pendingBlue(int wall, int playerWall, int[] colour, int[] ticksUntilMove)
     {
         return wall != playerWall && colour[wall] == BLUE && ticksUntilMove[wall] <= BURST_WINDOW;
     }
 
-    /**
-     * Whether the session ends 15 or 16 ticks after the last blue stream of a
-     * burst moves, as the next burst starts. The last blue is the one moving
-     * 1 and 2 ticks after the other two; its next move is ticksUntilMove away.
-     */
+    // Whether the session ends 15 or 16 ticks after the last blue stream of a burst moves, as the
+    // next burst starts. The last blue is the one moving 1 and 2 ticks after the other two; its
+    // next move is ticksUntilMove away.
     static boolean endsAsBurstStarts(int[] colour, int[] ticksUntilMove, int sessionLeft)
     {
         for (int wall = 0; wall < WALLS; wall++)
@@ -532,11 +513,9 @@ final class TargetRule
         return false;
     }
 
-    /**
-     * Nearest reachable blue wall; on a tie the one moving soonest, then the
-     * lower index. With {@code prefer} given, the wall with the highest value
-     * there wins before distance is looked at. -1 if none.
-     */
+    // Nearest reachable blue wall; on a tie the one moving soonest, then the lower index. With
+    // prefer given, the wall with the highest value there wins before distance is looked at. -1 if
+    // none.
     private static int nearestBlue(int excluded, boolean[] reachable, int[] distance, int[] ticksUntilMove,
         int[] prefer)
     {

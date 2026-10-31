@@ -26,17 +26,16 @@ package com.vividflash.efficienttearsofguthix;
 
 import java.util.Arrays;
 
-/**
- * Colour and age of the stream on each wall. Fed with live spawn and despawn
- * observations plus a per tick read of the walls; a stream whose spawn was not
- * seen live has an unknown age. No client types, so it can be unit tested.
- */
+// Colour and age of the stream on each wall. Fed with live spawn and despawn observations plus a
+// per tick read of the walls; a stream whose spawn was not seen live has an unknown age. No client
+// types, so it can be unit tested.
 final class StreamTracker
 {
     static final int STREAMS = 6;
     static final int DEFAULT_PERIOD = 16;
     static final String EXPECTED_ORDER = "GGGBBB";
-    /** The blue streams move first. Same rule, but a green stream can land on a dry wall right after. */
+    // The blue streams move first. Same rule, but a green stream can land on a dry wall right
+    // after.
     static final String BLUE_FIRST_ORDER = "BBBGGG";
 
     private static final int MIN_LIFETIME = 4;
@@ -50,7 +49,7 @@ final class StreamTracker
     private int period = DEFAULT_PERIOD;
     private int lastSpawnTick = Integer.MIN_VALUE;
     private int lastSpawnWall = -1;
-    /** The result of order() as of the last change of the state above. */
+    // The result of order() as of the last change of the state above.
     private String order;
     private boolean orderStale = true;
 
@@ -64,7 +63,7 @@ final class StreamTracker
         lastSpawnWall = -1;
     }
 
-    /** A stream seen appearing live. Two in one tick cannot be ordered, so both lose their age. */
+    // A stream seen appearing live. Two in one tick cannot be ordered, so both lose their age.
     void spawn(int wall, int streamColour, int tick)
     {
         if (colour[wall] == streamColour)
@@ -88,7 +87,7 @@ final class StreamTracker
         lastSpawnWall = wall;
     }
 
-    /** A stream seen leaving live. A known age gives the stream lifetime. */
+    // A stream seen leaving live. A known age gives the stream lifetime.
     void despawn(int wall, int streamColour, int tick)
     {
         if (colour[wall] != streamColour)
@@ -109,7 +108,7 @@ final class StreamTracker
         known[wall] = false;
     }
 
-    /** Safety net: what the walls show right now wins over the tracked state. */
+    // Safety net: what the walls show right now wins over the tracked state.
     void resync(int[] seen, int tick)
     {
         for (int wall = 0; wall < WALLS; wall++)
@@ -157,10 +156,8 @@ final class StreamTracker
         return streams == STREAMS;
     }
 
-    /**
-     * Stream colours in spawn order, starting after the largest pause between
-     * two consecutive spawns. Null while not synced.
-     */
+    // Stream colours in spawn order, starting after the largest pause between two consecutive
+    // spawns. Null while not synced.
     String order()
     {
         if (orderStale)
