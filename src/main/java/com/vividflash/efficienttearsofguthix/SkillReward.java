@@ -268,7 +268,7 @@ public class SkillReward
                     summaryWait = SUMMARY_WAIT_TICKS;
                 }
             }
-            else if (event.getMessage().contains(TIME_UP_MESSAGE) && config.runSummary())
+            else if (advisor.inArea() && event.getMessage().contains(TIME_UP_MESSAGE) && config.runSummary())
             {
                 rewardStartXp = client.getSkillExperiences().clone();
                 log.debug("[summary] XP read at the end of the time");

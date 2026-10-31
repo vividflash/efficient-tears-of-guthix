@@ -59,6 +59,8 @@ class BarTicksOverlay extends Overlay
     // The bar bounds the point was placed at.
     private Rectangle bounds;
     private Point point;
+    // The bar bounds last logged.
+    private Rectangle loggedBar;
 
     @Inject
     BarTicksOverlay(Client client, StreamAdvisor advisor)
@@ -102,8 +104,9 @@ class BarTicksOverlay extends Overlay
             {
                 bounds = bar;
                 point = textPoint(bar, textWidth);
-                if (log.isDebugEnabled())
+                if (log.isDebugEnabled() && !bar.equals(loggedBar))
                 {
+                    loggedBar = bar;
                     log.debug("[bar] bar {} text at {}", bar, point);
                 }
             }

@@ -41,7 +41,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.util.Text;
 
 // Holds Juna's last dialogue, whose continue starts the walk in, until the enter timing says now.
-// Lets everything through while the timing is unknown.
+// Lets everything through while the timing is unknown or the info panel that shows it is off.
 @Slf4j
 @Singleton
 public class EntryGuard implements KeyListener
@@ -101,7 +101,7 @@ public class EntryGuard implements KeyListener
     @Subscribe
     public void onWidgetClosed(WidgetClosed event)
     {
-        if (event.getGroupId() == InterfaceID.CHAT_LEFT)
+        if (event.getGroupId() == InterfaceID.CHAT_LEFT && event.isUnload())
         {
             dialogueLoaded = false;
             setActive(false);
@@ -118,7 +118,7 @@ public class EntryGuard implements KeyListener
 
         try
         {
-            setActive(enabled && advisor.atEntrance() && advisor.entryWait() > 0 && entryDialogueOpen());
+            setActive(enabled && advisor.showInfo() && advisor.entryWait() > 0 && entryDialogueOpen());
         }
         catch (Exception e)
         {
