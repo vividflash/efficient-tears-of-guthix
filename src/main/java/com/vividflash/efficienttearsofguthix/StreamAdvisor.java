@@ -275,6 +275,7 @@ public class StreamAdvisor
             baseY = view.getBaseY();
 
             int countdown = client.getVarbitValue(VarbitID.TOG_COUNTDOWN);
+            // the varbit drops by 4 every 4 ticks: the ticks between its steps are counted here
             if (countdown != lastCountdown)
             {
                 counting = lastCountdown > 0 && countdown < lastCountdown;
@@ -311,7 +312,6 @@ public class StreamAdvisor
                 tracker.resync(seen, tick);
             }
 
-            // the order is known exactly while synced
             String order = tracker.order();
             if (!Objects.equals(order, streamOrder))
             {
@@ -425,7 +425,7 @@ public class StreamAdvisor
             || type == MenuAction.GAME_OBJECT_FIFTH_OPTION;
     }
 
-    // Logged in, and in the region as of the last game tick.
+    // Logged in, in the region and on the cave's plane as of the last game tick.
     boolean inArea()
     {
         return inRegion;
@@ -482,7 +482,7 @@ public class StreamAdvisor
         infoRevision.incrementAndGet();
     }
 
-    // Reads the panel settings again; called on start and on a change of this plugin's config.
+    // Reads the settings again; called on start and on a change of this plugin's config.
     void configChanged()
     {
         showInfo = config.showInfo();
@@ -504,7 +504,7 @@ public class StreamAdvisor
                 allowBlueFirst, deprioritiseJuna, deprioritiseGreen);
         }
         infoRevision.incrementAndGet();
-        // the timer overlays follow revision, so a new Ticks left place shows without waiting for a tick
+        // the timer overlays follow revision: a new Ticks left place shows before the next tick
         revision.incrementAndGet();
     }
 
@@ -533,7 +533,6 @@ public class StreamAdvisor
         return showTearChange;
     }
 
-    // Where the session ticks left show.
     TicksLeftPlace ticksLeftPlace()
     {
         return ticksLeftPlace;
@@ -574,7 +573,6 @@ public class StreamAdvisor
         return ownTicks;
     }
 
-    // Ticks until the wait at the dry wall stood at ends, 0 when not waiting or the setting is off.
     int dryTicks()
     {
         return dryTicks;
@@ -654,11 +652,10 @@ public class StreamAdvisor
         revision.incrementAndGet();
     }
 
-    // The change of the tear counter to show, 0 for none. A fall to 0 from more than 1 is the
-    // counter being reset by a death, not a loss. A fall from exactly 1 cannot be told apart from a
-    // loss and is shown. Inside the minigame the counter only goes back to 0 when the player dies
-    // to the poison, and no other way out of a started run keeps that week's run, so a drop to 0
-    // from more than 1 is treated as that reset, not a loss.
+    // The change of the tear counter to show, 0 for none. Inside the minigame the counter only goes
+    // back to 0 when the player dies to the poison, and no other way out of a started run keeps
+    // that week's run, so a drop to 0 from more than 1 is that reset, not a loss. A fall from
+    // exactly 1 cannot be told apart from a loss and is shown.
     static int shownChange(int last, int now)
     {
         if (last < 0 || now == last || (now == 0 && last != 1))
@@ -815,7 +812,7 @@ public class StreamAdvisor
         return complete;
     }
 
-    // Applies the rule while the streams are synced in the expected order and the session has not
+    // Applies the rule while the streams are synced in a supported order and the session has not
     // ended; otherwise there is no target.
     private void decide(int tick, WorldPoint position)
     {

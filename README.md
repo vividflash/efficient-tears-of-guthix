@@ -17,9 +17,9 @@ Works on `GGGBBB` and `BBBGGG` worlds.
 - **Deprioritise Juna**: until the stream order is synced and supported,
   left click on Juna walks. Default `on`.
 - **Block entry unless correct timing**: stops you from entering until timing
-  says "now". Default `on`.
+  says "now", while the **Info panel** is on. Default `on`.
 - **Allow BBBGGG worlds**: off treats `BBBGGG` worlds as not efficient and
-  blocks entry. Default `on`.
+  deprios Juna. Default `on`.
 
 **Walls & Tiles**
 
@@ -28,7 +28,8 @@ Works on `GGGBBB` and `BBBGGG` worlds.
 - **Wall style**: how a wall with a stream is marked. `Outline` of the stream,
   or `Hull` of the stream filled in. Default `Outline`.
 - **Tile**: marks the tile to stand on in front of those walls. Default `on`.
-- **Second best**: Marks second best wall, when not at best wall. Default `on`.
+- **Second best**: Marks second best wall, when not at best wall, in
+  **Second best colour**. Default `on`.
 - **Mark possible walls**: walls the next blue stream can land on, in
   **Possible wall colour**. Default `on`.
 - **Mark bad walls**: Walls you should not be at, in **Bad wall colour**.
@@ -53,7 +54,7 @@ Works on `GGGBBB` and `BBBGGG` worlds.
   `on`.
 - **Ticks left**: `Overlay` (info panel or timer box), `Interface` (above
   the time bar) or `Both`. Default `Interface`.
-- **Ticks left follows bar**: the number stays centered above the remaining
+- **Ticks left follows bar**: the number stays centred above the remaining
   bar as the bar empties. Default `off`.
 - **Login reminder**: chat message on login naming the skill that gets the XP
   while a run is open. Default `off`.

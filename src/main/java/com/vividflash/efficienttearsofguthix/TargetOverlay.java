@@ -112,7 +112,7 @@ class TargetOverlay extends Overlay
     private WorldView pointsView;
     private int pointsBaseX;
     private int pointsBaseY;
-    // Wall to draw the stream countdown on, or -1.
+    // Wall to draw the countdown on, or -1.
     private int ticksWall = -1;
     private String ticksText;
     private Color ticksColour;
@@ -261,7 +261,7 @@ class TargetOverlay extends Overlay
             }
         }
 
-        // the best wall stays highlighted while you stand on it; the second best only when not at the best wall
+        // the best wall stays marked while stood on; second best only when not at the best wall
         if (model || tile)
         {
             if (move && second >= 0 && showSecond)
@@ -386,7 +386,7 @@ class TargetOverlay extends Overlay
         return object instanceof WallObject ? ((WallObject) object).getConvexHull() : null;
     }
 
-    // Ticks until the blue stream on the wall the player stands at moves, drawn on that wall.
+    // The stream or dry wall countdown, drawn on the wall the player stands at.
     private void streamTicks(Graphics2D graphics)
     {
         LocalPoint local = wallPoints[ticksWall];
@@ -444,7 +444,8 @@ class TargetOverlay extends Overlay
         hull = hull(mark.hullOwner);
         if (hull == null && !(mark.searched && mark.hullOwner == null))
         {
-            // no stream hull and no owner with a hull: search the tile, once per rebuild when it finds nothing
+            // no stream hull and no owner with a hull: search the tile, once per rebuild when it
+            // finds nothing
             mark.searched = true;
             hull = searchHull(tile, mark);
         }

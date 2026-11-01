@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.vividflash'
-version = '0.5'
+version = '0.5.1'
 
 def runeLiteVersion = '1.13.4'
 

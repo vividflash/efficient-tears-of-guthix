@@ -30,6 +30,9 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 // The timer line shared by the info panel and the timer's own box.
 final class TimerLine
 {
+    // The edges of the enter window, two ticks or more from its best tick, which is now 4.
+    private static final Color EDGE_GREEN = new Color(0x9CD84A);
+
     private TimerLine()
     {
     }
@@ -48,8 +51,9 @@ final class TimerLine
         if (entryWait == 0)
         {
             line.setLeft("Enter:");
-            line.setRight("now " + advisor.entryNowLeft());
-            line.setRightColor(Color.GREEN);
+            int nowLeft = advisor.entryNowLeft();
+            line.setRight("now " + nowLeft);
+            line.setRightColor(nowLeft >= 3 && nowLeft <= 5 ? Color.GREEN : EDGE_GREEN);
         }
         else if (entryWait > 0)
         {

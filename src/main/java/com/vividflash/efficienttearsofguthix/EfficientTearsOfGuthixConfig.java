@@ -72,7 +72,7 @@ public interface EfficientTearsOfGuthixConfig extends Config
     @ConfigItem(
         keyName = "holdEntry",
         name = "Block entry unless correct timing",
-        description = "Stops you from entering until timing says now",
+        description = "Stops you from entering until timing says now, while the Info panel is on",
         position = 35
     )
     default boolean holdEntry()
@@ -342,7 +342,7 @@ public interface EfficientTearsOfGuthixConfig extends Config
     @ConfigItem(
         keyName = "ticksFollowBar",
         name = "Ticks left follows bar",
-        description = "The number stays centered above the remaining bar as the bar empties",
+        description = "The number stays centred above the remaining bar as the bar empties",
         section = interfaceSection,
         position = 57
     )

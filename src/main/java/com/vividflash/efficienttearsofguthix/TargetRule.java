@@ -24,14 +24,16 @@
  */
 package com.vividflash.efficienttearsofguthix;
 
-// Fixed rule for the wall to stand at. A pure function of the wall colours, the blue streams'
-// remaining ticks and the player tile. No client types, so it can be unit tested.
+// Fixed rule for the wall to stand at, the wall marks and the enter timing. Pure functions of
+// their arguments, no client types, so it can be unit tested.
 final class TargetRule
 {
     static final int EMPTY = 0;
     static final int BLUE = 1;
     static final int GREEN = 2;
 
+    // Ticks a move costs beyond the walk: collecting starts 2 ticks after arrival, leaving costs
+    // none. Measured in game.
     static final int STOP_DELAY = 0;
     static final int START_DELAY = 2;
 
@@ -65,7 +67,7 @@ final class TargetRule
     // No marks on any wall. Shared, never written to.
     static final int[] NO_MARKS = new int[TogLayout.WALLS];
 
-    // Ticks from the first stream's move to the last one's.
+    // Ticks of a burst, the first stream's move to the last one's, both included.
     private static final int BURST_LENGTH = 6;
 
     // Ticks from the last dialog click at Juna to having control inside.
@@ -118,7 +120,8 @@ final class TargetRule
     //   running
     // - earlyLast: on the last blue of a burst, target the wall the first blue moved to as soon as
     //   it lands, and keep it until the move, so the click can be timed on the stream countdown
-    // - collect: ticks of collecting each wall still offers; only compared in the endgame
+    // - collect: ticks of collecting each wall still offers; walls are only ranked by it in the
+    //   endgame
     static Decision decide(int[] colour, int[] ticksUntilMove, int playerX, int playerY, int previousTarget,
         boolean walking, int sessionLeft, boolean earlyLast, int[] distance, boolean[] reachable, int[] collect)
     {
@@ -358,7 +361,7 @@ final class TargetRule
         return untilBest - ENTRY_EARLY;
     }
 
-    // While entryWait is 0: the ticks "now" still lasts, this one included, down to 1 on its last tick.
+    // While entryWait is 0: the ticks "now" still lasts, this one included, 1 on its last tick.
     static int entryNowLeft(int lastBlueMove, int period, int now)
     {
         int untilBest = Math.floorMod(lastBlueMove - ENTRY_LEAD - now, period);

@@ -50,8 +50,9 @@ import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.util.QuantityFormatter;
 
-// The skill the tears' XP goes to if played now, and the login reminder from the game's line that
-// the next run is open until the run is done, the day ends or the plugin stops.
+// The skill the tears' XP goes to if played now, the login reminder from the game's line that
+// the next run is open until the run is done, the day ends or the plugin stops, and the end of
+// run summary.
 @Slf4j
 @Singleton
 public class SkillReward
@@ -165,9 +166,9 @@ public class SkillReward
         refreshSkill = showSkill && config.refreshSkill();
     }
 
-    // The skill the tears' XP goes to if played now, as of the last login, the last time Juna came
-    // into the scene, or with the refresh setting on the last XP gain in the cave. Null before the
-    // first pick.
+    // The skill the tears' XP goes to if played now, as of the last reminder, the last time Juna
+    // came into the scene or a setting changed in the cave, or with the refresh setting on the last
+    // XP gain in the cave. Null before the first pick.
     Skill skill()
     {
         return skill;
@@ -330,7 +331,6 @@ public class SkillReward
             {
                 junaPending = false;
             }
-            // below the game's own line the reminder only adds the skill
             boolean gameLine = eligibleSeen;
             loginPending = false;
             eligibleSeen = false;
@@ -345,7 +345,6 @@ public class SkillReward
         }
     }
 
-    // True when the reminder is due.
     private boolean reminderDue()
     {
         // the open flag covers every login after the game's first one of the day
@@ -365,8 +364,8 @@ public class SkillReward
             : "Tears of Guthix is ready. The XP goes to " + picked.getName() + ".");
     }
 
-    // Posts the end of run line once the reward's XP has arrived.
-    // Nothing else gives XP in the cave, so any gain is the reward. A run without XP posts no line, on purpose.
+    // Posts the end of run line once the reward's XP has arrived. Nothing else gives XP in the
+    // cave, so any gain is the reward. A run without XP posts no line.
     private void postSummary()
     {
         int[] now = client.getSkillExperiences();
@@ -400,7 +399,8 @@ public class SkillReward
         return end == start ? 0 : Integer.parseInt(message.substring(start, end));
     }
 
-    // The skill that gained the most XP, null when none did. Both arrays are indexed by Skill.ordinal().
+    // The skill that gained the most XP, null when none did. Both arrays are indexed by
+    // Skill.ordinal().
     static Skill biggestGain(int[] before, int[] after)
     {
         Skill best = null;

@@ -59,7 +59,7 @@ class BarTicksOverlay extends Overlay
     private Widget widget;
     private String text;
     private int textWidth;
-    // The Ticks left follow bar setting, as of the last read.
+    // The Ticks left follows bar setting, as of the last read.
     private boolean follow;
     // The bar bounds the point was placed at.
     private Rectangle bounds;
