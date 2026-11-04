@@ -26,7 +26,7 @@ package com.vividflash.efficienttearsofguthix;
 
 // Records the streams of a session tick by tick and plays the target rule over them afterwards:
 // per tick a step towards the clicked wall, a collected tick after TargetRule.START_DELAY on a
-// blue wall counts 1, on a green wall -1, and clicks follow the targets by the reaction in ticks.
+// blue wall counts 1, on a green wall -1 down to 0, and clicks follow the targets by the reaction in ticks.
 // No client types, so it can be unit tested.
 final class RuleReplay
 {
@@ -114,7 +114,7 @@ final class RuleReplay
         return replay(colours, untilMoves, length, startX, startY, reaction, earlyLast);
     }
 
-    // Replay tears (blue ticks minus green ticks collected) over a session of this many ticks.
+    // Replay tears (blue ticks minus green ticks collected, never below 0) over a session of this many ticks.
     // The walk starts from the given tile when it is on the floor, else from the entry tile.
     //
     // - colours, untilMoves: per session tick and wall, at u * WALLS + wall
@@ -126,8 +126,7 @@ final class RuleReplay
         int destWall = -1;
         int prevTarget = -1;
         int[] targets = new int[length];
-        int blue = 0;
-        int green = 0;
+        int tears = 0;
         int[] colour = new int[WALLS];
         int[] untilMove = new int[WALLS];
         int[] distance = new int[WALLS];
@@ -163,11 +162,12 @@ final class RuleReplay
             {
                 if (colour[here] == TargetRule.BLUE)
                 {
-                    blue++;
+                    tears++;
                 }
-                else if (colour[here] == TargetRule.GREEN)
+                // a green wall takes nothing from 0 tears
+                else if (colour[here] == TargetRule.GREEN && tears > 0)
                 {
-                    green++;
+                    tears--;
                 }
             }
 
@@ -182,7 +182,7 @@ final class RuleReplay
                 destWall = targets[clickFrom];
             }
         }
-        return blue - green;
+        return tears;
     }
 
     // One step along a shortest floor path; first neighbour in scan order on ties.

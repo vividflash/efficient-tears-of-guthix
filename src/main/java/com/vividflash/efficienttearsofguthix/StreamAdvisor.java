@@ -285,7 +285,7 @@ public class StreamAdvisor
             {
                 boolean drop = lastCountdown > 0 && countdown < lastCountdown;
                 // the first drop of a countdown seen being set: the session starts, record it whole
-                if (drop && !counting && countdownSet && countdown > 0)
+                if (runSummary && drop && !counting && countdownSet && countdown > 0)
                 {
                     ruleReplay.begin(tick, countdown, position.getX(), position.getY());
                 }
