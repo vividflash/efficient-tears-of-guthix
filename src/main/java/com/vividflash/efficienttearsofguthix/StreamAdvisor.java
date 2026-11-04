@@ -147,6 +147,7 @@ public class StreamAdvisor
     private volatile boolean showMarks;
     private volatile boolean showDryTicks;
     private volatile boolean earlyLast;
+    private volatile boolean runSummary;
 
     // Recent tear counter changes, oldest first.
     private final Deque<TearChange> tearChanges = new ConcurrentLinkedDeque<>();
@@ -337,7 +338,10 @@ public class StreamAdvisor
                 infoRevision.incrementAndGet();
             }
 
-            ruleReplay.record(tick, tracker);
+            if (runSummary)
+            {
+                ruleReplay.record(tick, tracker);
+            }
             decide(tick, position);
             revision.incrementAndGet();
         }
@@ -515,6 +519,7 @@ public class StreamAdvisor
         showMarks = config.showPossible() || config.showBad();
         showDryTicks = config.showDryTicks();
         earlyLast = config.reactionSpeed() == ReactionSpeed.ONE_TICK;
+        runSummary = config.runSummary();
         if (log.isDebugEnabled())
         {
             log.debug("[config] info {} hideOrder {} splitTimer {} ticksLeft {} tearChange {} marks {} dryTicks {} reaction {} allowBlueFirst {} deprioJuna {} deprioGreen {}",
