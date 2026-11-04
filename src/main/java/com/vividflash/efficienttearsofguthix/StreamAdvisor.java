@@ -89,6 +89,8 @@ public class StreamAdvisor
     }
 
     private final StreamTracker tracker = new StreamTracker();
+    // The streams of the session in the cave, for the rule replay in the run summary.
+    private final RuleReplay ruleReplay = new RuleReplay();
     private final Set<String> reported = ConcurrentHashMap.newKeySet();
     private final int[] seen = new int[TogLayout.WALLS];
     private final int[] colours = new int[TogLayout.WALLS];
@@ -159,6 +161,8 @@ public class StreamAdvisor
     private int lastGameTick;
     private int ticksLeft;
     private int lastCountdown = -1;
+    // The countdown was seen going from 0 to its start value since the last clear.
+    private boolean countdownSet;
     // Something is tracked that leaving the region has to clear; outside it nothing else runs.
     private boolean needsClear;
     // In the region, no session running and off the cave floor: at Juna.
@@ -278,7 +282,14 @@ public class StreamAdvisor
             // the varbit drops by 4 every 4 ticks: the ticks between its steps are counted here
             if (countdown != lastCountdown)
             {
-                counting = lastCountdown > 0 && countdown < lastCountdown;
+                boolean drop = lastCountdown > 0 && countdown < lastCountdown;
+                // the first drop of a countdown seen being set: the session starts, record it whole
+                if (drop && !counting && countdownSet && countdown > 0)
+                {
+                    ruleReplay.begin(tick, countdown, position.getX(), position.getY());
+                }
+                countdownSet = countdown > 0 && (lastCountdown == 0 || countdownSet);
+                counting = drop;
                 lastCountdown = countdown;
                 ticksLeft = Math.max(0, countdown);
             }
@@ -326,6 +337,7 @@ public class StreamAdvisor
                 infoRevision.incrementAndGet();
             }
 
+            ruleReplay.record(tick, tracker);
             decide(tick, position);
             revision.incrementAndGet();
         }
@@ -423,6 +435,12 @@ public class StreamAdvisor
             || type == MenuAction.GAME_OBJECT_THIRD_OPTION
             || type == MenuAction.GAME_OBJECT_FOURTH_OPTION
             || type == MenuAction.GAME_OBJECT_FIFTH_OPTION;
+    }
+
+    // The streams of the current or last session in the cave since the last clear.
+    RuleReplay ruleReplay()
+    {
+        return ruleReplay;
     }
 
     // Logged in, in the region and on the cave's plane as of the last game tick.
@@ -632,8 +650,10 @@ public class StreamAdvisor
         lastX = -1;
         lastY = -1;
         lastCountdown = -1;
+        countdownSet = false;
         ticksLeft = 0;
         counting = false;
+        ruleReplay.reset();
         tearChanges.clear();
         tracker.reset();
         if (atEntrance || streamOrder != null || orderSupported)
