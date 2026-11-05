@@ -67,7 +67,8 @@ class TearChangeOverlay extends Overlay
     {
         try
         {
-            if (advisor.tearChanges().isEmpty())
+            StreamAdvisor.TearChange[] changes = advisor.tearChanges();
+            if (changes.length == 0)
             {
                 return null;
             }
@@ -88,7 +89,7 @@ class TearChangeOverlay extends Overlay
 
             long now = System.nanoTime();
             int x = bounds.x + bounds.width + GAP;
-            for (StreamAdvisor.TearChange change : advisor.tearChanges())
+            for (StreamAdvisor.TearChange change : changes)
             {
                 long age = now - change.nanos;
                 if (age < 0 || age >= StreamAdvisor.TEAR_CHANGE_NANOS)

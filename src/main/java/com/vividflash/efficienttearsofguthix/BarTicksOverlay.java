@@ -40,8 +40,8 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
 // The session ticks left, centred in the empty space above the time bar of the minigame panel. The
-// setting and the ticks left are read once per game tick, the bar's bounds each frame, and the text
-// is moved only when the bar moves.
+// setting, the ticks left and the bar's bounds are read once per game tick, and the text is moved
+// only when the bar moves.
 @Slf4j
 class BarTicksOverlay extends Overlay
 {
@@ -55,7 +55,7 @@ class BarTicksOverlay extends Overlay
 
     // The advisor revision the widget and text were read at.
     private int builtRevision = -1;
-    // The time bar, or null when there are no ticks left or the setting is off.
+    // The time bar, or null when there are no ticks left, the setting is off or the bar is hidden.
     private Widget widget;
     private String text;
     private int textWidth;
@@ -91,30 +91,42 @@ class BarTicksOverlay extends Overlay
                     ? client.getWidget(InterfaceID.TogSidepanel.BAR)
                     : null;
                 text = widget == null ? null : String.valueOf(ticksLeft);
-                textWidth = widget == null ? 0 : graphics.getFontMetrics().stringWidth(text);
-                follow = advisor.ticksFollowBar();
-                bounds = null;
+                int width = widget == null ? 0 : graphics.getFontMetrics().stringWidth(text);
+                boolean followBar = advisor.ticksFollowBar();
+                // the point only depends on these and the bar's bounds
+                if (width != textWidth || followBar != follow)
+                {
+                    textWidth = width;
+                    follow = followBar;
+                    bounds = null;
+                }
                 if ((widget == null) != (last == null) && log.isDebugEnabled())
                 {
                     log.debug("[bar] drawn {} place {} ticks left {}", widget != null, advisor.ticksLeftPlace(), ticksLeft);
                 }
+                if (widget != null && widget.isHidden())
+                {
+                    widget = null;
+                }
+                else if (widget != null)
+                {
+                    Rectangle bar = widget.getBounds();
+                    if (!bar.equals(bounds))
+                    {
+                        bounds = bar;
+                        point = textPoint(bar, textWidth, follow);
+                        if (log.isDebugEnabled() && !bar.equals(loggedBar))
+                        {
+                            loggedBar = bar;
+                            log.debug("[bar] bar {} text at {}", bar, point);
+                        }
+                    }
+                }
             }
 
-            if (widget == null || widget.isHidden())
+            if (widget == null)
             {
                 return null;
-            }
-
-            Rectangle bar = widget.getBounds();
-            if (!bar.equals(bounds))
-            {
-                bounds = bar;
-                point = textPoint(bar, textWidth, follow);
-                if (log.isDebugEnabled() && !bar.equals(loggedBar))
-                {
-                    loggedBar = bar;
-                    log.debug("[bar] bar {} text at {}", bar, point);
-                }
             }
 
             OverlayUtil.renderTextLocation(graphics, point, text, Color.WHITE);

@@ -128,6 +128,11 @@ final class StreamTracker
         return colour[wall];
     }
 
+    boolean ageKnown(int wall)
+    {
+        return colour[wall] != TargetRule.EMPTY && known[wall];
+    }
+
     int spawnTick(int wall)
     {
         return spawnTick[wall];

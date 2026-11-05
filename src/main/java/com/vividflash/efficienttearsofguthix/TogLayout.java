@@ -87,6 +87,30 @@ final class TogLayout
         return (dx >= 1 && dx <= 3) || (dy >= 1 && dy <= 3);
     }
 
+    // Walking ticks between two tiles; Chebyshev distance when either one is off the cross.
+    static int distance(int fromX, int fromY, int toX, int toY)
+    {
+        if (isFloor(fromX, fromY) && isFloor(toX, toY))
+        {
+            return FLOOR_DISTANCE[cell(fromX, fromY)][cell(toX, toY)];
+        }
+        return Math.max(Math.abs(fromX - toX), Math.abs(fromY - toY));
+    }
+
+    // X of the tile itself when on the cross, else of the tile where the walk in from the entrance
+    // ends.
+    static int startX(int x, int y)
+    {
+        return isFloor(x, y) ? x : ENTRY_X;
+    }
+
+    // Y of the tile itself when on the cross, else of the tile where the walk in from the entrance
+    // ends.
+    static int startY(int x, int y)
+    {
+        return isFloor(x, y) ? y : ENTRY_Y;
+    }
+
     // Walking ticks from this tile on the cross to each cell of the 5x5 block; collectCell gives a
     // wall's index into it. Read only.
     static int[] floorDistances(int x, int y)

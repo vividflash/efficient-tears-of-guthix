@@ -69,6 +69,7 @@ public class StreamAdvisor
     private static final int MAX_TEAR_CHANGES = 10;
     // How long a tear counter change stays on screen, on the System.nanoTime clock.
     static final long TEAR_CHANGE_NANOS = TimeUnit.MILLISECONDS.toNanos(1800);
+    private static final TearChange[] NO_TEAR_CHANGES = new TearChange[0];
 
     private static final Color BLUE_STREAM = new Color(0, 150, 255);
     private static final Color GREEN_STREAM = Color.GREEN;
@@ -89,6 +90,8 @@ public class StreamAdvisor
     }
 
     private final StreamTracker tracker = new StreamTracker();
+    // The streams of the session in the cave, for the rule replay in the run summary.
+    private final RuleReplay ruleReplay = new RuleReplay();
     private final Set<String> reported = ConcurrentHashMap.newKeySet();
     private final int[] seen = new int[TogLayout.WALLS];
     private final int[] colours = new int[TogLayout.WALLS];
@@ -145,9 +148,12 @@ public class StreamAdvisor
     private volatile boolean showMarks;
     private volatile boolean showDryTicks;
     private volatile boolean earlyLast;
+    private volatile boolean runSummary;
 
     // Recent tear counter changes, oldest first.
     private final Deque<TearChange> tearChanges = new ConcurrentLinkedDeque<>();
+    // A copy of them for the overlay, so a frame walks an array; replaced when they change.
+    private volatile TearChange[] shownTearChanges = NO_TEAR_CHANGES;
     private int lastTears = -1;
     // False from the countdown being set until it first drops: the walk in.
     private boolean counting;
@@ -159,6 +165,8 @@ public class StreamAdvisor
     private int lastGameTick;
     private int ticksLeft;
     private int lastCountdown = -1;
+    // The countdown was seen going from 0 to its start value since the last clear.
+    private boolean countdownSet;
     // Something is tracked that leaving the region has to clear; outside it nothing else runs.
     private boolean needsClear;
     // In the region, no session running and off the cave floor: at Juna.
@@ -278,7 +286,14 @@ public class StreamAdvisor
             // the varbit drops by 4 every 4 ticks: the ticks between its steps are counted here
             if (countdown != lastCountdown)
             {
-                counting = lastCountdown > 0 && countdown < lastCountdown;
+                boolean drop = lastCountdown > 0 && countdown < lastCountdown;
+                // the first drop of a countdown seen being set: the session starts, record it whole
+                if (runSummary && drop && !counting && countdownSet && countdown > 0)
+                {
+                    ruleReplay.begin(tick, countdown, position.getX(), position.getY());
+                }
+                countdownSet = countdown > 0 && (lastCountdown == 0 || countdownSet);
+                counting = drop;
                 lastCountdown = countdown;
                 ticksLeft = Math.max(0, countdown);
             }
@@ -304,6 +319,7 @@ public class StreamAdvisor
             {
                 // turned off: drop what is shown and reseed when turned on again
                 tearChanges.clear();
+                shownTearChanges = NO_TEAR_CHANGES;
                 lastTears = -1;
             }
 
@@ -326,6 +342,10 @@ public class StreamAdvisor
                 infoRevision.incrementAndGet();
             }
 
+            if (runSummary)
+            {
+                ruleReplay.record(tick, tracker);
+            }
             decide(tick, position);
             revision.incrementAndGet();
         }
@@ -425,6 +445,12 @@ public class StreamAdvisor
             || type == MenuAction.GAME_OBJECT_FIFTH_OPTION;
     }
 
+    // The streams of the current or last session in the cave since the last clear.
+    RuleReplay ruleReplay()
+    {
+        return ruleReplay;
+    }
+
     // Logged in, in the region and on the cave's plane as of the last game tick.
     boolean inArea()
     {
@@ -497,6 +523,7 @@ public class StreamAdvisor
         showMarks = config.showPossible() || config.showBad();
         showDryTicks = config.showDryTicks();
         earlyLast = config.reactionSpeed() == ReactionSpeed.ONE_TICK;
+        runSummary = config.runSummary();
         if (log.isDebugEnabled())
         {
             log.debug("[config] info {} hideOrder {} splitTimer {} ticksLeft {} tearChange {} marks {} dryTicks {} reaction {} allowBlueFirst {} deprioJuna {} deprioGreen {}",
@@ -595,9 +622,10 @@ public class StreamAdvisor
         return entryNowLeft;
     }
 
-    Deque<TearChange> tearChanges()
+    // Recent tear counter changes, oldest first. Read only.
+    TearChange[] tearChanges()
     {
-        return tearChanges;
+        return shownTearChanges;
     }
 
     // Per wall TargetRule mark. Read only.
@@ -632,9 +660,12 @@ public class StreamAdvisor
         lastX = -1;
         lastY = -1;
         lastCountdown = -1;
+        countdownSet = false;
         ticksLeft = 0;
         counting = false;
+        ruleReplay.reset();
         tearChanges.clear();
+        shownTearChanges = NO_TEAR_CHANGES;
         tracker.reset();
         if (atEntrance || streamOrder != null || orderSupported)
         {
@@ -669,10 +700,12 @@ public class StreamAdvisor
     private void tearChange(int tears)
     {
         long now = System.nanoTime();
+        boolean changed = false;
         TearChange oldest;
         while ((oldest = tearChanges.peekFirst()) != null && now - oldest.nanos >= TEAR_CHANGE_NANOS)
         {
             tearChanges.pollFirst();
+            changed = true;
         }
 
         int change = shownChange(lastTears, tears);
@@ -694,8 +727,13 @@ public class StreamAdvisor
             {
                 tearChanges.pollFirst();
             }
+            changed = true;
         }
         lastTears = tears;
+        if (changed)
+        {
+            shownTearChanges = tearChanges.toArray(NO_TEAR_CHANGES);
+        }
     }
 
     // Each letter in its stream's colour.

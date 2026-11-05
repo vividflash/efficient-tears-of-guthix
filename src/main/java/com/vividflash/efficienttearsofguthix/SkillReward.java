@@ -80,6 +80,8 @@ public class SkillReward
     private static final String TIME_UP_MESSAGE = "Your time in the cave is up.";
     // Ticks after the end line to wait for the reward's XP.
     private static final int SUMMARY_WAIT_TICKS = 3;
+    // No rule replay in the summary.
+    static final int NO_REPLAY = Integer.MIN_VALUE;
 
 
     @Inject
@@ -129,6 +131,11 @@ public class SkillReward
     private volatile int summaryTears = -1;
     // Ticks left to wait for the reward's XP.
     private int summaryWait;
+    // The tick the time in the cave ended on while the rule replay is still to run, -1 otherwise.
+    private int replayAfterTick = -1;
+    // The rule replay's tears at reaction 0 and 1 for the summary, NO_REPLAY when skipped.
+    private int replay0 = NO_REPLAY;
+    private int replay1 = NO_REPLAY;
 
     void start()
     {
@@ -140,6 +147,7 @@ public class SkillReward
         reminded = false;
         rewardStartXp = null;
         summaryTears = -1;
+        replayAfterTick = -1;
         Arrays.fill(lastXp, -1);
         runOpen.clear();
         readConfig();
@@ -211,6 +219,7 @@ public class SkillReward
                 junaPending = false;
                 rewardStartXp = null;
                 summaryTears = -1;
+                replayAfterTick = -1;
                 Arrays.fill(lastXp, -1);
             }
         }
@@ -272,6 +281,10 @@ public class SkillReward
             else if (advisor.inArea() && event.getMessage().contains(TIME_UP_MESSAGE) && config.runSummary())
             {
                 rewardStartXp = client.getSkillExperiences().clone();
+                // the replay runs on a later tick, not while the run is still live
+                replayAfterTick = client.getTickCount();
+                replay0 = NO_REPLAY;
+                replay1 = NO_REPLAY;
                 log.debug("[summary] XP read at the end of the time");
             }
         }
@@ -286,7 +299,12 @@ public class SkillReward
     {
         try
         {
-            if (summaryTears >= 0)
+            if (replayAfterTick >= 0 && client.getTickCount() > replayAfterTick)
+            {
+                replayAfterTick = -1;
+                replayRule();
+            }
+            if (summaryTears >= 0 && replayAfterTick < 0)
             {
                 postSummary();
             }
@@ -381,10 +399,28 @@ public class SkillReward
         }
         if (gained != null)
         {
-            remind(summaryLine(summaryTears, gained, now[gained.ordinal()] - rewardStartXp[gained.ordinal()]));
+            remind(summaryLine(summaryTears, gained, now[gained.ordinal()] - rewardStartXp[gained.ordinal()],
+                replay0, replay1));
         }
         rewardStartXp = null;
         summaryTears = -1;
+    }
+
+    // Plays the wall rule over the recorded session at reaction 0 and 1, each with the early last
+    // blue the reaction speed setting gives it. Skipped unless every session tick was recorded.
+    private void replayRule()
+    {
+        RuleReplay replay = advisor.ruleReplay();
+        if (replay.complete())
+        {
+            replay0 = replay.replay(0, false);
+            replay1 = replay.replay(1, true);
+        }
+        if (log.isDebugEnabled())
+        {
+            log.debug("[summary] rule replay ticks {}/{} start {},{} -> {} at 0, {} at 1", replay.recorded(),
+                replay.length(), replay.startX(), replay.startY(), replay0, replay1);
+        }
     }
 
     // The number after the game's end of run prefix, 0 when it cannot be read.
@@ -417,9 +453,11 @@ public class SkillReward
         return best;
     }
 
-    static String summaryLine(int tears, Skill skill, int xp)
+    static String summaryLine(int tears, Skill skill, int xp, int replay0, int replay1)
     {
-        return "Tears of Guthix: " + tears + " tears, " + QuantityFormatter.formatNumber(xp) + " " + skill.getName() + " XP.";
+        String line = "Tears of Guthix: " + tears + " tears, " + QuantityFormatter.formatNumber(xp) + " " + skill.getName() + " XP.";
+        return replay0 == NO_REPLAY || replay1 == NO_REPLAY ? line
+            : line + " Rule replay: " + replay0 + " at 0, " + replay1 + " at 1.";
     }
 
     // Per entry of ORDER, whether the game counts that skill.
