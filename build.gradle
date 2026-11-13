@@ -31,3 +31,5 @@ tasks.withType(JavaCompile) {
 test {
     useJUnit()
 }
+
+if (file('dev.gradle').exists()) { apply from: 'dev.gradle' }
