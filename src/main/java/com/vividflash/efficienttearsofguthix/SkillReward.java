@@ -83,7 +83,6 @@ public class SkillReward
     // No rule replay in the summary.
     static final int NO_REPLAY = Integer.MIN_VALUE;
 
-
     @Inject
     private Client client;
 
@@ -194,6 +193,11 @@ public class SkillReward
         try
         {
             GameState state = event.getGameState();
+            if (log.isDebugEnabled())
+            {
+                log.debug("[reminder] state {} fromLogin {} pending {} xp {}",
+                    state, fromLoginScreen, loginPending, client.getOverallExperience());
+            }
             if (state == GameState.LOGGED_IN)
             {
                 loginPending = fromLoginScreen;
